@@ -18,6 +18,8 @@
 
 这是首个公开测试版本，已针对 **Windows x64 /《群星》4.5.1** 验证。尚未支持 Linux、macOS、任意游戏或经过验证的多人联机。
 
+![中文实时滑块](docs/images/panel-zh.png)
+
 ## 下载与使用
 
 1. 打开 [v0.6.0 Release 页面](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.6.0)，在 Assets 下载 `CursorBridge-Stellaris-windows-x64.zip`。自动生成的 Source code 压缩包供开发者使用。

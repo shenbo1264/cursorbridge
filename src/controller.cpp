@@ -16,7 +16,7 @@ static DWORD attachedPid=0,failedPid=0;
 static int desiredSize=32;
 static bool enabled=true;
 static std::wstring binDir,logPath;
-static std::wstring gameExe,defaultGameLog,gameLog,dataDirectory,settingsPath;
+static std::wstring gameExe,defaultGameLog,gameLog,configuredGameLog,dataDirectory,settingsPath;
 static bool explicitGameExe=false;
 static bool explicitGameLog=false;
 static LanguageMonitor uiLanguage;
@@ -138,7 +138,7 @@ static void ChooseGame(){
     WritePrivateProfileStringW(L"Game",L"Executable",gameExe.c_str(),settingsPath.c_str());
 }
 static void Tick() {
-    if(attached&&WaitForSingleObject(attached,0)==WAIT_OBJECT_0){Log(L"游戏已退出，释放本地连接。");if(panelWindow)DestroyWindow(panelWindow);Disconnect();gameLog=defaultGameLog;explicitGameLog=false;uiLanguage.SetSource(Parent(Parent(gameLog))+L"\\settings.txt");failedPid=0;}
+    if(attached&&WaitForSingleObject(attached,0)==WAIT_OBJECT_0){Log(L"游戏已退出，释放本地连接。");if(panelWindow)DestroyWindow(panelWindow);Disconnect();gameLog=explicitGameLog?configuredGameLog:defaultGameLog;uiLanguage.SetSource(Parent(Parent(gameLog))+L"\\settings.txt");failedPid=0;}
     if(!attached){DWORD pid=FindGame();if(pid&&pid!=failedPid){if(!Connect(pid))failedPid=pid;}}
     if(state){InterlockedExchange64(&state->heartbeat,GetTickCount64());InterlockedExchange(&state->enabled,enabled?1:0);InterlockedExchange(&state->size,desiredSize);}
     RefreshUiLanguage();
@@ -201,7 +201,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,wchar_t*,int) {
     if(!args)return 2;
     for(int i=1;i<argCount;i++){
         std::wstring option=args[i];
-        if(option==L"--game-log"&&i+1<argCount){gameLog=AbsolutePath(args[++i]);explicitGameLog=true;}
+        if(option==L"--game-log"&&i+1<argCount){configuredGameLog=gameLog=AbsolutePath(args[++i]);explicitGameLog=true;}
         else if(option==L"--game-path"&&i+1<argCount){gameExe=AbsolutePath(args[++i]);explicitGameExe=true;}
         else if(option==L"--data-dir"&&i+1<argCount)dataDirectory=AbsolutePath(args[++i]);
         else if(option==L"--launch")launch=true;

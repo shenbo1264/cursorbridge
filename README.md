@@ -18,6 +18,8 @@ An open-source project for making game cursors easier to see and size. **The fir
 
 This is an early release, verified against **Stellaris 4.5.1 on Windows x64**. There is no Linux/macOS build, universal-game support or multiplayer certification.
 
+![English slider](docs/images/panel-en.png)
+
 ## Download and start
 
 1. Open the [v0.6.0 Release page](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.6.0) and download `CursorBridge-Stellaris-windows-x64.zip` from Assets. The automatically generated “Source code” archives are for developers.
@@ -54,6 +56,8 @@ The slider is a companion's floating panel. It is not a newly registered engine 
 ## Build and verify
 
 Requirements: Windows x64, Visual Studio 2022 C++ Build Tools with Windows SDK, CMake 3.21+, Python 3.10+ for fixture/mod tooling. No third-party hooking library is included.
+
+The optional original-cover generator also needs Pillow and a Windows Segoe UI font; it is not required to build or run the application.
 
 ```powershell
 cmake -S . -B build -A x64

@@ -13,6 +13,10 @@ This release was prepared from an earlier Stellaris-only prototype and then rebu
 
 The two native runs use a dedicated test process. They do not certify all savegames or arbitrary mod stacks. CI runs the synthetic suite without downloading any game assets. Public runtime packages exclude the test host and development reports.
 
-Manual game smoke results are recorded separately before release. The scope is a fresh single-player test profile, not a lengthy campaign or multiplayer session. The original user's normal profile and mod list are not changed during these checks.
+Manual smoke checks in a fresh single-player profile with UOD, Dark Blue and their existing dependencies passed: main menu and new-game flow, active `-userdir` detection, Chinese slider, 1/96 panel endpoints, 16×16 actual in-game cursor, persistence, startup-event opening, locally generated settings button, repeated N_1/N_2 requests on the same game date, and restoration to the 48×48 original cursor. No CursorBridge script errors were found in the game error log. Existing third-party UI warnings are outside this check's scope.
+
+The normal user's settings and enabled-mod-list file hashes were checked and remained unchanged. The scope is a fresh test profile, not a lengthy campaign or multiplayer session. An initially incomplete isolated UI profile exited before loading even without the companion; tests proceeded with the complete previously validated UI dependency set. This is why broad playset compatibility is not claimed.
+
+The English game main menu and English floating panel were also checked in a separate profile with the final controller build; Chinese and English screenshots are included. Non-Chinese fallback is additionally covered by language classification tests. An explicit log override remains configured when the game exits, instead of reverting to a different profile.
 
 Still needing broader coverage: long sessions, unusual DPI/multi-monitor configurations, other operating systems, software cursors, future game versions, protected multiplayer games, and settings-page layouts outside the tested UOD/Dark Blue combination. Other games and custom theme/animation packs are roadmap items.
