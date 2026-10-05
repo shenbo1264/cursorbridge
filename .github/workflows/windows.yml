@@ -1,0 +1,38 @@
+name: Windows build and tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - name: Configure
+        run: cmake -S . -B build -A x64
+      - name: Compile
+        run: cmake --build build --config Release
+      - name: Unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Original synthetic cursor fixtures
+        run: python tools/make_test_assets.py 'build/Synthetic Game 中文'
+      - name: Hook, animation, size and recovery regression
+        shell: pwsh
+        run: |
+          $fixture = Join-Path (Get-Location) 'build\Synthetic Game 中文\stellaris.exe'
+          $data = Join-Path (Get-Location) 'build\test-data'
+          $process = Start-Process -FilePath 'build\bin\StellarisCursor.exe' -ArgumentList ('--self-test --game-path "{0}" --data-dir "{1}"' -f $fixture, $data) -PassThru -WindowStyle Hidden -Wait
+          if ($process.ExitCode -ne 0) { Get-Content "$data\logs\controller.log"; throw 'Native cursor test failed' }
+          $report = Get-Content 'build\logs\selftest-native.json' -Raw | ConvertFrom-Json
+          if (-not $report.passed -or $report.checks -ne 4771) { throw 'Native test result is incomplete' }
+      - name: Validate public mod
+        run: python tools/validate_workshop.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cursorbridge-windows-test-evidence
+          path: build/logs/selftest-*.json

@@ -1,0 +1,11 @@
+/build*/
+/dist/
+/logs/
+/local/
+/PLAN.md
+/STATUS.md
+/tools/port_source.py
+*.obj
+*.pdb
+*.ilk
+__pycache__/

@@ -1,0 +1,9 @@
+scursor_settings = {
+    length = 0
+    icon = "GFX_edict_type_policy"
+    resources = { category = edicts }
+    potential = { is_ai = no is_multiplayer = no }
+    allow = { always = yes }
+    effect = { country_event = { id = scursor.101 } }
+    ai_weight = { weight = 0 }
+}

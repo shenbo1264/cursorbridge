@@ -1,0 +1,65 @@
+namespace = scursor
+
+country_event = {
+    id = scursor.101
+    title = scursor.101.title
+    desc = scursor.101.desc
+    picture = GFX_evt_space_station
+    is_triggered_only = yes
+    trigger = { is_ai = no is_multiplayer = no }
+    option = {
+        name = scursor.open_slider
+        hidden_effect = { log = "SCURSOR_V1_OPEN_SETTINGS" }
+    }
+    option = {
+        name = scursor.quick_sizes
+        hidden_effect = { country_event = { id = scursor.100 } }
+    }
+    option = { name = scursor.close }
+}
+
+# The native event window supplies working in-game buttons without replacing any GUI.
+country_event = {
+    id = scursor.100
+    title = scursor.100.title
+    desc = scursor.100.desc
+    picture = GFX_evt_space_station
+    is_triggered_only = yes
+    trigger = { is_ai = no is_multiplayer = no }
+    option = {
+        name = scursor.size24
+        hidden_effect = {
+            log = "SCURSOR_V1_SIZE_24"
+            country_event = { id = scursor.100 }
+        }
+    }
+    option = {
+        name = scursor.size32
+        hidden_effect = {
+            log = "SCURSOR_V1_SIZE_32"
+            country_event = { id = scursor.100 }
+        }
+    }
+    option = {
+        name = scursor.size40
+        hidden_effect = {
+            log = "SCURSOR_V1_SIZE_40"
+            country_event = { id = scursor.100 }
+        }
+    }
+    option = {
+        name = scursor.size48
+        hidden_effect = {
+            log = "SCURSOR_V1_SIZE_48"
+            country_event = { id = scursor.100 }
+        }
+    }
+    option = {
+        name = scursor.restore
+        hidden_effect = {
+            log = "SCURSOR_V1_RESTORE"
+            country_event = { id = scursor.100 }
+        }
+    }
+    option = { name = scursor.close }
+}

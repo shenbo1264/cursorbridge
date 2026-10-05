@@ -1,0 +1,2 @@
+# Appended hook in a uniquely named file; never replace 00_on_actions.txt.
+on_game_start_country = { events = { scursor.101 } }

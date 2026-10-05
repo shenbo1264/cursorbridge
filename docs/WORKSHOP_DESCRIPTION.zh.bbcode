@@ -1,0 +1,44 @@
+[h1]CursorBridge｜群星光标大小 · 1–96 像素实时调整[/h1]
+觉得游戏箭头太大，遮住舰队信息？或者希望它更醒目？用滑块把《群星》光标调到适合自己的尺寸。
+
+[b]本模组需要免费的 CursorBridge 配套程序。仅订阅工坊条目不会改变光标大小。[/b]
+
+[h2]下载配套程序[/h2]
+[url=https://github.com/shenbo1264/cursorbridge/releases/tag/v0.6.0]打开 GitHub Release：下载 Windows x64 版本[/url]
+[url=https://github.com/shenbo1264/cursorbridge/releases/download/v0.6.0/CursorBridge-Stellaris-windows-x64.zip]直接下载程序 ZIP[/url]
+[url=https://github.com/shenbo1264/cursorbridge]查看开源代码、中文 README 与问题反馈[/url]
+
+以上链接直接通向项目的 GitHub 页面或 Release 文件，不使用网盘、广告跳转或短链接。Release 附带 SHA256 校验。程序目前未签名；开源让大家能够检查与自行构建，并不等于安全认证。
+
+[h2]你可以做什么[/h2]
+[list]
+[*]实时选择 1–96 像素的任意整数尺寸，每步 1 px。
+[*]建议先从 24–32 px 开始。1 px 是极限小光标选项，96 px 可以满足大光标需求或演示。
+[*]保留游戏原有造型、点击热点与原有动画。
+[*]随时恢复原光标；关闭设置面板后保留当前尺寸。
+[*]中文游戏设置显示中文，其他语言显示英文。
+[*]Windows 桌面鼠标偏好保持原样。
+[/list]
+
+[h2]如何使用[/h2]
+[olist]
+[*]订阅并在启动器中启用本模组。
+[*]从上面的 GitHub Release 下载程序 ZIP，完整解压，运行 Open Settings.cmd 或 bin/StellarisCursor.exe。
+[*]正常启动《群星》。程序会自动识别游戏；也可在托盘菜单中手动选择 stellaris.exe。
+[*]单人开局事件选择“打开实时滑块”，或者使用免费“鼠标大小设置”法令。
+[*]拖动滑块即可调整；在面板或托盘菜单中可恢复原光标。
+[/olist]
+
+请先启动配套程序再点击游戏入口；连接后重新打开法令也可以。程序可以直接通过托盘使用，不依赖这个入口模组。
+
+[h2]兼容范围[/h2]
+首个公开测试版本面向 Windows x64 / Stellaris 4.5.1，脚本标记支持 4.5.*。当前游戏内入口仅支持单人游戏。
+
+核心模组使用独立脚本文件追加入口，不覆盖 00_on_actions.txt、科技树或整套 GUI。已在 UOD + Dark Blue UI 的独立配置中验证，但其他组合仍需具体检查。脚本模组影响游戏校验码，不承诺成就或多人兼容。
+
+滑块是配套程序的浮动面板。原生设置页按钮属于可选的本地生成补丁，需要根据当前安装的 UI 生成并放在其后；它不包含在核心工坊包中，UI 更新后也需重新生成。
+
+[h2]开源与后续[/h2]
+CursorBridge 的原创代码采用 MIT 协议。这一版先把《群星》的光标尺寸调整做好；后续规划包括更多游戏适配、原创样式包、颜色与描边、自定义动画等。当前版本尚未实现这些后续功能。
+
+本项目独立开发，与 Paradox Interactive、Steam 或 YoloMouse 无关联。不附带游戏原始光标素材，不要求替换游戏文件。
