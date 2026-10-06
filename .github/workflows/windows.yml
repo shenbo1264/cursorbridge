@@ -29,7 +29,7 @@ jobs:
           $process = Start-Process -FilePath 'build\bin\StellarisCursor.exe' -ArgumentList ('--self-test --game-path "{0}" --data-dir "{1}"' -f $fixture, $data) -PassThru -WindowStyle Hidden -Wait
           if ($process.ExitCode -ne 0) { Get-Content "$data\logs\controller.log"; throw 'Native cursor test failed' }
           $report = Get-Content 'build\logs\selftest-native.json' -Raw | ConvertFrom-Json
-          if (-not $report.passed -or $report.checks -ne 4771) { throw 'Native test result is incomplete' }
+          if (-not $report.passed -or $report.checks -ne 40700) { throw 'Native test result is incomplete' }
       - name: Validate public mod
         run: python tools/validate_workshop.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

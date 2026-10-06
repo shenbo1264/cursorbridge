@@ -1,22 +1,34 @@
-# Validation scope — v0.6.0
-
-This release was prepared from an earlier Stellaris-only prototype and then rebuilt with runtime paths and Windows Known Folders. No prior local prototype archives are used as public release assets.
+# Validation scope — v0.7.0
 
 | Check | Result | What it establishes |
 | --- | --- | --- |
 | Windows x64 MSVC Release build, warnings treated as errors | Passed locally | Source builds with the documented compiler |
-| Native regression with original synthetic CUR/ANI fixtures | 4,771 checks, zero failures | All 96 sizes, rendering, animated frame preservation, return semantics, invalid values and recovery |
-| Native regression with installed Stellaris 4.5.1 resources | 4,771 checks, zero failures | The portable adapter still recognizes and scales the real nine resources |
+| Native hook regression with original synthetic CUR/ANI fixtures | 40,700 checks, zero failures | All nine resources × 96 sizes in original mode and 12 themes; rendered pixels, hotspots, animated second frames, return semantics, invalid values and restoration |
+| Native hook regression with installed Stellaris 4.5.1 resources | 40,700 checks, zero failures | Real resource recognition/scaling and deterministic handling of indistinguishable normal/selected/dragselect pointers |
 | Bridge parser/tail regression | 153 checks, zero failures | Whitelisting, partial lines, rotation, repeated requests and bounded input |
-| Language and active profile regression | 80 checks, zero failures | Chinese/English fallback, settings precedence and actual command-line profile reading |
-| Installation path regression | 13 checks, zero failures | Modern/legacy Steam VDF, Unicode/spaces, invalid input, Known Folders and missing-resource rejection |
+| Language and active profile regression | 134 checks, zero failures | Chinese/English strings and fallback, settings precedence and actual command-line profile reading |
+| Installation path regression | 13 checks, zero failures | Steam VDF, Unicode/spaces, Known Folders and missing-resource rejection |
+| Preferences regression | 38 checks, zero failures | Theme mapping, three saved slots, invalid persisted values and modifier configuration |
 
-The two native runs use a dedicated test process. They do not certify all savegames or arbitrary mod stacks. CI runs the synthetic suite without downloading any game assets. Public runtime packages exclude the test host and development reports.
+Native suites run in an exact-path dedicated test process, including the real-resource run. Synthetic fixtures now have distinct bitmap signatures for all nine roles. The game itself uses identical files for normal/selected/dragselect: their first matching base shape is the honest expected behavior of this adapter. Original cursor handles/signatures are not modified. Cached handles are revalidated to handle Windows recycling a destroyed cursor handle.
 
-Manual smoke checks in a fresh single-player profile with UOD, Dark Blue and their existing dependencies passed: main menu and new-game flow, active `-userdir` detection, Chinese slider, 1/96 panel endpoints, 16×16 actual in-game cursor, persistence, startup-event opening, locally generated settings button, repeated N_1/N_2 requests on the same game date, and restoration to the 48×48 original cursor. No CursorBridge script errors were found in the game error log. Existing third-party UI warnings are outside this check's scope.
+## Manual Windows / Stellaris checks
 
-The normal user's settings and enabled-mod-list file hashes were checked and remained unchanged. The scope is a fresh test profile, not a lengthy campaign or multiplayer session. An initially incomplete isolated UI profile exited before loading even without the companion; tests proceeded with the complete previously validated UI dependency set. This is why broad playset compatibility is not claimed.
+Tests used isolated profiles with UOD, Dark Blue and the previously verified dependency set, without editing the normal enabled-mod list or user settings.
 
-The English game main menu and English floating panel were also checked in a separate profile with the final controller build; Chinese and English screenshots are included. Non-Chinese fallback is additionally covered by language classification tests. An explicit log override remains configured when the game exits, instead of reverting to a different profile.
+- Chinese windowed game and Chinese panel; numeric entry, arrow shortcut, Tab navigation and Home/End endpoints 1/96. An input of 97 left the saved size at 96 and reverted when focus left the field.
+- Shape selection and cyan palette; saved preset 1 (24 px / cyan crosshair / confinement on), switched to unused preset 2 (32 px / original / confinement off), then restored the complete first preset.
+- Default Ctrl+Alt+L was occupied on this machine. The panel reported that binding; enabling the saved Shift modifier removed the conflict. Ctrl+Alt+Shift+C opened the panel and Up changed 24 to 25 px. The restore shortcut worked in the panel and in the game.
+- Actual game cursor measured at 25×25 and 24×24, with hotspot and bitmap hashes matching the generated theme loaded at the same size. Diagnostics were DPI-aware; screenshots alone were not used to infer hardware cursor dimensions.
+- Windowed confinement covered the game's screen-coordinate client bounds. Opening the panel released it to the full desktop rectangle. Restoration disabled confinement and returned the original 48×48 game pointer.
+- English game configured for fullscreen with borderless disabled; English panel and actual 24×24 cyan crosshair verified. When fullscreen minimized on panel focus, closing the final panel automatically restored the game to the foreground. The restore shortcut returned the original 48×48 pointer.
+- Abrupt termination of our own test companion while the game remained foreground: after heartbeat expiry the DLL released its confinement flag and restored the 48×48 original without restarting the game. Reconnection also succeeded. This does not establish behavior after every OS-level failure.
+- Chinese and English final-panel screenshots are included. The application remains Stellaris-specific; built-in styles are not arbitrary user-import support.
 
-Still needing broader coverage: long sessions, unusual DPI/multi-monitor configurations, other operating systems, software cursors, future game versions, protected multiplayer games, and settings-page layouts outside the tested UOD/Dark Blue combination. Other games and custom theme/animation packs are roadmap items.
+The previous v0.6 smoke coverage of the unchanged event/log bridge includes single-player startup/edict opening and a locally generated UOD/Dark Blue settings button, with repeated requests on the same game date. Version 0.7 does not change those scripts except the descriptor version. The ten localization folders still pass 16-key parity and script validation. No third-party GUI is distributed.
+
+The normal settings and enabled-mod-list hashes were checked before and after these tests. No savegame was loaded or modified. These are main-menu and isolated-process checks, not a lengthy campaign or multiplayer certification. Long sessions, unusual multi-monitor/DPI setups, other games, software cursors and future game versions still need specific coverage.
+
+## Release checks
+
+The package excludes local logs/profiles, test binaries and proprietary game resources. Every generated theme asset is independently regenerated and compared byte-for-byte by the packager before inclusion. ZIP CRCs and a per-file SHA256 manifest are verified. Public source CI and the downloaded Release asset are checked during publication; see the tagged release for the corresponding source and checksums.

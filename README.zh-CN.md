@@ -1,14 +1,16 @@
 # CursorBridge
 
-[English](README.md) · [下载 Windows x64 程序](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.6.0) · [后续路线](docs/ROADMAP.md)
+[English](README.md) · [下载 Windows x64 程序](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.7.0) · [后续路线](docs/ROADMAP.md)
 
-一个让游戏光标更容易看清、也更容易调整的开源项目。**目前已实现的是《群星》的 Windows x64 版本**；其他游戏、自定义光标样式和动画包仍在规划中。
+一个让游戏光标更容易看清、也更容易调整的开源项目。**目前已实现的是《群星》的 Windows x64 版本**，已有原创样式与配色；其他游戏、用户导入的样式包与编辑器仍在规划中。
 
 ![CursorBridge：1–96 像素，Windows x64，需要配套程序](docs/images/cover.png)
 
 ## 当前功能
 
-- **1–96 像素实时滑块**，每步 1 像素。建议先用 24–32 px；1 px 是极限选项，96 px 可用于大光标需求或演示。
+- **1–96 像素滑块与精确数字输入**，支持方向键、Home/End、Page Up/Down 和 Tab 导航。建议先用 24–32 px；1 px 是极限选项，96 px 可用于大光标需求或演示。
+- **12 套原创光标**：高对比箭头、十字准星、圆环 × 白、青、琥珀、粉四色。友军、攻击和禁止移动使用独立状态色，并有抓取状态、忙碌旋转动画与移动脉冲动画。4.5.1 的普通／选中／框选原图完全一致，因此这三个状态共用基础指针。
+- **3 个个人预设、游戏内快捷键与可选窗口锁定**；预设保存尺寸、样式和锁定状态。快捷键与对标范围见[功能对照](docs/YOLOMOUSE_COMPARISON.md)。
 - 使用玩家已安装游戏中的光标，保留原有造型、点击热点和动画。项目与下载包均不附带游戏原始素材。
 - 游戏处于前台、鼠标位于游戏客户区时，调整已识别的《群星》光标。Windows 桌面鼠标偏好保持原样。
 - 随时恢复原光标；退出程序也会请求恢复。尺寸选择保存在本机。
@@ -22,8 +24,8 @@
 
 ## 下载与使用
 
-1. 打开 [v0.6.0 Release 页面](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.6.0)，在 Assets 下载 `CursorBridge-Stellaris-windows-x64.zip`。自动生成的 Source code 压缩包供开发者使用。
-2. 完整解压到自己有写入权限的目录，保留 `bin/StellarisCursor.exe` 与 `bin/StellarisCursorHook.dll` 的相对位置。配套程序无需安装器或 Python。
+1. 打开 [v0.7.0 Release 页面](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.7.0)，在 Assets 下载 `CursorBridge-Stellaris-windows-x64.zip`。自动生成的 Source code 压缩包供开发者使用。
+2. 完整解压到自己有写入权限的目录，保留 `bin/StellarisCursor.exe`、`bin/StellarisCursorHook.dll` 与 `bin/assets/themes/` 的相对位置。配套程序无需安装器或 Python。
 3. 双击 `Open Settings.cmd`，或运行 `bin/StellarisCursor.exe --settings`。
 4. 正常通过 Steam / 启动器进入游戏，程序会自动连接。拖动滑块，关闭面板后继续游戏。
 5. 如果没有找到游戏，右键系统托盘里的工具图标，选择“选择《群星》安装位置…”，定位到完整游戏目录中的 `stellaris.exe`。
@@ -66,7 +68,7 @@ python tools/make_test_assets.py "build/Synthetic Game"
 
 完整原生测试的启动与等待示例见 [英文 README](README.md#build-and-verify)。自动测试采用原创的 CUR/ANI 素材，布局标记 `stellaris.exe` 不会被执行或注入；注入目标仅限同目录内构建的专用测试宿主。也可用本机合法游戏目录做资源回归，测试仍在独立宿主中进行。
 
-原生套件包含 **4,771 项检查**，覆盖九类光标、96 档尺寸、热点边界、实际绘制、动画第二帧、无效尺寸、恢复、心跳失效和系统光标保护。另有通讯、本地化、用户目录和安装路径测试。测试范围与未覆盖项目见 [验证记录](docs/VALIDATION.md)。
+原生套件包含 **40,700 项检查**，覆盖九个资源、96 档尺寸、原样与 12 套主题、热点边界、实际绘制、动画第二帧、无效值、恢复、心跳失效和系统光标保护。另有通讯、本地化、预设、用户目录和安装路径测试。测试范围与未覆盖项目见 [验证记录](docs/VALIDATION.md)。
 
 欢迎参与[后续路线](docs/ROADMAP.md)中的通用游戏适配、样式包和动画管理。提报问题前请移除日志中的个人路径与存档信息。原创代码、脚本、测试素材与项目封面采用 [MIT](LICENSE) 协议；《群星》素材和本机生成的第三方 UI 不在该授权内。
 

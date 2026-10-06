@@ -1,14 +1,16 @@
 # CursorBridge
 
-[简体中文](README.zh-CN.md) · [Download Windows x64](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.6.0) · [Roadmap](docs/ROADMAP.md)
+[简体中文](README.zh-CN.md) · [Download Windows x64](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.7.0) · [Roadmap](docs/ROADMAP.md)
 
-An open-source project for making game cursors easier to see and size. **The first working adapter is for Stellaris on Windows x64.** Other games, custom themes and custom animation packs are future work.
+An open-source project for making game cursors easier to see and customize. **The first working adapter is for Stellaris on Windows x64.** Built-in original themes are available; other games, user-imported packs and an editor are future work.
 
 ![CursorBridge: 1–96 px, Windows x64, companion app required](docs/images/cover.png)
 
-## What works in v0.6.0
+## What works in v0.7.0
 
-- A live **1–96 pixel** slider with one-pixel steps. 1 px is an extreme option; start with 24–32 px. 96 px is available for accessibility and demonstrations.
+- A **1–96 pixel** keyboard-accessible slider and exact size input. 1 px is an extreme option; start with 24–32 px. 96 px is available for accessibility and demonstrations.
+- **12 original cursor sets**: contrast arrow, crosshair or ring × white, cyan, amber or pink. Friendly/attack/blocked state colors, grab states and native busy/movement animation are included. In 4.5.1, normal/selected/dragselect are identical source pointers and share the basic shape.
+- Three saved presets (size, theme, confinement), game-scoped shortcuts and optional foreground-only window confinement. See [controls and feature comparison](docs/YOLOMOUSE_COMPARISON.md).
 - Keeps the installed game's cursor art, hotspots and existing animated cursors. No game art is bundled in this repository or release.
 - Changes recognized Stellaris cursors while the game is foreground and the pointer is over its client area. Windows desktop pointer preferences are unchanged.
 - Restore the original cursor or quit the companion from its tray menu. The last selected size is saved locally.
@@ -22,8 +24,8 @@ This is an early release, verified against **Stellaris 4.5.1 on Windows x64**. T
 
 ## Download and start
 
-1. Open the [v0.6.0 Release page](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.6.0) and download `CursorBridge-Stellaris-windows-x64.zip` from Assets. The automatically generated “Source code” archives are for developers.
-2. Extract the entire ZIP to a folder you control. Keep `bin/StellarisCursor.exe` and `bin/StellarisCursorHook.dll` together. No installer or Python is needed for the companion.
+1. Open the [v0.7.0 Release page](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.7.0) and download `CursorBridge-Stellaris-windows-x64.zip` from Assets. The automatically generated “Source code” archives are for developers.
+2. Extract the entire ZIP to a folder you control. Keep `bin/StellarisCursor.exe`, `bin/StellarisCursorHook.dll` and `bin/assets/themes/` together. No installer or Python is needed for the companion.
 3. Run `Open Settings.cmd` or `bin/StellarisCursor.exe --settings`.
 4. Start Stellaris normally through Steam / its launcher. The tool connects automatically and shows its status in the tray and panel. Use the slider, close the panel and play.
 5. If the game is not found, right-click the tray icon and choose **Select Stellaris installation…**, then select `stellaris.exe` inside the installed game's folder. All nine `gfx/cursors` resources must be present.
@@ -77,7 +79,7 @@ $test.ExitCode
 
 The fixture executable is a **layout marker that is never run or injected**. The only test injection target is the separately built, exact-path `StellarisCursorTest.exe`. Tests use original synthetic CUR/ANI files, so CI does not need Stellaris. For local regression against a legitimately installed game, supply its executable as `--game-path`; the tests still run in the isolated test host, not a savegame. Reports are written under `build/logs` and the selected data directory.
 
-The native suite covers 4,771 checks: all nine resources × 96 sizes, hotspot bounds, rendered pixels, animated second frames, `SetCursor` return semantics, invalid sizes, original handles, restoration and heartbeat expiry. Bridge, language/profile and path tests run separately. See [validation scope](docs/VALIDATION.md); these counts do not replace long-session gameplay testing.
+The native suite covers 40,700 checks: all nine resources × 96 sizes in original mode and 12 themes, hotspot bounds, rendered pixels, animated second frames, `SetCursor` return semantics, invalid values, original handles, restoration and heartbeat expiry. Bridge, language/profile, preferences and path tests run separately. See [validation scope](docs/VALIDATION.md); these counts do not replace long-session gameplay testing.
 
 ## Contribute
 

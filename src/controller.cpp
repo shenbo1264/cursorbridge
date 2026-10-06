@@ -3,6 +3,8 @@
 #include "language.h"
 #include "game_profile.h"
 #include "install_paths.h"
+#include "preferences.h"
+#include <commctrl.h>
 #include <commdlg.h>
 #include <tlhelp32.h>
 #include <shellapi.h>
@@ -14,6 +16,9 @@ static HANDLE attached=NULL,mapHandle=NULL;
 static Shared* state=NULL;
 static DWORD attachedPid=0,failedPid=0;
 static int desiredSize=32;
+static int desiredTheme=0;
+static bool lockWindow=false;
+static UINT hotkeyModifiers=MOD_CONTROL|MOD_ALT;
 static bool enabled=true;
 static std::wstring binDir,logPath;
 static std::wstring gameExe,defaultGameLog,gameLog,configuredGameLog,dataDirectory,settingsPath;
@@ -24,7 +29,13 @@ static const wchar_t* Text(UiText key){return UiString(uiLanguage.language,key);
 static BridgeTail bridge;
 static NOTIFYICONDATAW tray={};
 static int IndexSize(int i){static const int sizes[]={24,32,40,48};return sizes[i];}
-static void SaveSize(){WritePrivateProfileStringW(L"Cursor",L"Size",std::to_wstring(desiredSize).c_str(),settingsPath.c_str());}
+static void SaveSize(){WritePreset(settingsPath,L"Cursor",{desiredSize,desiredTheme,lockWindow});}
+static void PublishPreferences(){
+    if(!state)return;
+    InterlockedExchange(&state->size,desiredSize);InterlockedExchange(&state->theme,desiredTheme);
+    InterlockedExchange(&state->lockWindow,lockWindow?1:0);InterlockedExchange(&state->enabled,enabled?1:0);
+    InterlockedExchange64(&state->heartbeat,GetTickCount64());
+}
 static void Log(const std::wstring& text) {
     int n=WideCharToMultiByte(CP_UTF8,0,text.c_str(),(int)text.size(),NULL,0,NULL,NULL);std::string utf8(n,'\0');
     WideCharToMultiByte(CP_UTF8,0,text.c_str(),(int)text.size(),&utf8[0],n,NULL,NULL);
@@ -32,10 +43,11 @@ static void Log(const std::wstring& text) {
     f<<t.wHour<<":"<<t.wMinute<<":"<<t.wSecond<<" "<<utf8<<"\n";
 }
 #include "settings_panel.h"
+#include "hotkeys.h"
 static void RefreshUiLanguage(){
     if(!uiLanguage.Refresh())return;
     SetWindowTextW(windowHandle,Text(UiText::WindowTitle));
-    if(panelWindow){SetWindowTextW(panelWindow,Text(UiText::WindowTitle));InvalidateRect(panelWindow,NULL,FALSE);}
+    if(panelWindow){SetWindowTextW(panelWindow,Text(UiText::WindowTitle));LocalizePanel();InvalidateRect(panelWindow,NULL,FALSE);}
 }
 static HANDLE OpenValidated(DWORD pid,bool test) {
     HANDLE h=OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ|PROCESS_VM_WRITE|PROCESS_VM_OPERATION|PROCESS_CREATE_THREAD|SYNCHRONIZE,FALSE,pid);
@@ -86,9 +98,10 @@ static bool Connect(DWORD pid,bool test=false,bool windowTest=false) {
     DWORD mapError=GetLastError();
     Shared* s=mapping?(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared)):NULL;
     if(!s){Log(L"共享内存创建失败，Win32="+std::to_wstring(GetLastError()));if(mapping)CloseHandle(mapping);CloseHandle(h);return false;}
-    if(mapError!=ERROR_ALREADY_EXISTS){ZeroMemory(s,sizeof(*s));s->magic=CURSOR_MAGIC;s->version=1;s->pid=pid;}
-    if(s->magic!=CURSOR_MAGIC||s->version!=1||s->pid!=pid){UnmapViewOfFile(s);CloseHandle(mapping);CloseHandle(h);return false;}
+    if(mapError!=ERROR_ALREADY_EXISTS){ZeroMemory(s,sizeof(*s));s->magic=CURSOR_MAGIC;s->version=CURSOR_ABI_VERSION;s->pid=pid;}
+    if(s->magic!=CURSOR_MAGIC||s->version!=CURSOR_ABI_VERSION||s->pid!=pid){UnmapViewOfFile(s);CloseHandle(mapping);CloseHandle(h);return false;}
     InterlockedExchange(&s->size,desiredSize);InterlockedExchange(&s->enabled,enabled?1:0);InterlockedExchange64(&s->heartbeat,GetTickCount64());
+    InterlockedExchange(&s->theme,desiredTheme);InterlockedExchange(&s->lockWindow,lockWindow?1:0);
     InitArgs args={};args.size=sizeof(args);args.test=test?(windowTest?2U:1U):0U;
     wcsncpy_s(args.targetExe,(test?binDir+L"\\StellarisCursorTest.exe":gameExe).c_str(),_TRUNCATE);
     wcsncpy_s(args.resourceDirectory,gameDirectory.c_str(),_TRUNCATE);
@@ -103,7 +116,7 @@ static bool Connect(DWORD pid,bool test=false,bool windowTest=false) {
         if(profile.empty())profile=Parent(Parent(gameLog));
         if(!explicitGameLog)gameLog=profile+L"\\logs\\game.log";
         uiLanguage.SetSource(profile+L"\\settings.txt");
-        if(panelWindow){SetWindowTextW(panelWindow,Text(UiText::WindowTitle));InvalidateRect(panelWindow,NULL,FALSE);}
+        if(panelWindow){SetWindowTextW(panelWindow,Text(UiText::WindowTitle));LocalizePanel();InvalidateRect(panelWindow,NULL,FALSE);}
         bridge.Reset(gameLog);Log(L"游戏内设置入口已就绪；接收本次连接后的尺寸、恢复及滑块面板请求。");
         Log(L"语言配置来源："+uiLanguage.Source()+L"；显示 "+(uiLanguage.language==UiLanguage::Chinese?L"中文":L"English"));
     }
@@ -140,7 +153,7 @@ static void ChooseGame(){
 static void Tick() {
     if(attached&&WaitForSingleObject(attached,0)==WAIT_OBJECT_0){Log(L"游戏已退出，释放本地连接。");if(panelWindow)DestroyWindow(panelWindow);Disconnect();gameLog=explicitGameLog?configuredGameLog:defaultGameLog;uiLanguage.SetSource(Parent(Parent(gameLog))+L"\\settings.txt");failedPid=0;}
     if(!attached){DWORD pid=FindGame();if(pid&&pid!=failedPid){if(!Connect(pid))failedPid=pid;}}
-    if(state){InterlockedExchange64(&state->heartbeat,GetTickCount64());InterlockedExchange(&state->enabled,enabled?1:0);InterlockedExchange(&state->size,desiredSize);}
+    PublishPreferences();
     RefreshUiLanguage();
     std::wstring label=attached?std::wstring(Text(UiText::TrayTitle))+std::to_wstring(desiredSize)+L" px "+Text(enabled?UiText::On:UiText::Off):Text(UiText::TrayWaiting);
     wcsncpy_s(tray.szTip,label.c_str(),_TRUNCATE);Shell_NotifyIconW(NIM_MODIFY,&tray);
@@ -151,7 +164,7 @@ static void BridgeTick() {
         if(command.kind==BridgeKind::Settings){OpenSettings();return;}
         if(command.kind==BridgeKind::Size){if(desiredSize==command.size&&enabled)return;desiredSize=command.size;enabled=true;SaveSize();Log(L"游戏内按钮："+std::to_wstring(desiredSize)+L" 像素。");}
         else if(command.kind==BridgeKind::Restore){if(!enabled)return;enabled=false;Log(L"游戏内按钮：恢复原光标。");}
-        if(state){InterlockedExchange(&state->size,desiredSize);InterlockedExchange(&state->enabled,enabled?1:0);}
+        PublishPreferences();SyncPanel();
     });
 }
 static void LaunchGame(){
@@ -170,19 +183,20 @@ static void Menu() {
     if(cmd==1)LaunchGame();
     else if(cmd==5)OpenSettings();
     else if(cmd==6)ChooseGame();
-    else if(cmd==2)enabled=!enabled;
-    else if(cmd>=10&&cmd<=13){desiredSize=IndexSize(cmd-10);SaveSize();}
+    else if(cmd==2){enabled=!enabled;PublishPreferences();SyncPanel();}
+    else if(cmd>=10&&cmd<=13)ApplySize(IndexSize(cmd-10),true);
     else if(cmd==3)failedPid=0;
     else if(cmd==4)DestroyWindow(windowHandle);
     if(cmd!=4)Tick();
 }
 static LRESULT CALLBACK Procedure(HWND h,UINT m,WPARAM w,LPARAM l) {
+    if(m==WM_HOTKEY){HandleHotkey((int)w);return 0;}
     if(m==WM_APP+4){OpenSettings();return 0;}
     if(m==WM_APP+3){LaunchGame();return 0;}
     if(m==WM_CLOSE){DestroyWindow(h);return 0;}
-    if(m==WM_TIMER){if(w==2){BridgeTick();PanelTick();}else Tick();return 0;}
+    if(m==WM_TIMER){if(w==2){BridgeTick();PanelTick();RefreshHotkeys();}else Tick();return 0;}
     if(m==WM_APP+1&&(l==WM_RBUTTONUP||l==WM_LBUTTONUP)){Menu();return 0;}
-    if(m==WM_DESTROY){if(panelWindow)DestroyWindow(panelWindow);KillTimer(h,1);KillTimer(h,2);Disconnect();Shell_NotifyIconW(NIM_DELETE,&tray);PostQuitMessage(0);return 0;}
+    if(m==WM_DESTROY){ClearHotkeys();if(panelWindow)DestroyWindow(panelWindow);KillTimer(h,1);KillTimer(h,2);Disconnect();Shell_NotifyIconW(NIM_DELETE,&tray);PostQuitMessage(0);return 0;}
     return DefWindowProcW(h,m,w,l);
 }
 static int SelfTest(bool windowTest=false) {
@@ -190,7 +204,7 @@ static int SelfTest(bool windowTest=false) {
     std::wstring cmd=L"\""+host+L"\" --game-dir \""+gameDirectory+L"\""+(windowTest?L" --refresh":L"");STARTUPINFOW startup={};startup.cb=sizeof(startup);PROCESS_INFORMATION pi={};
     if(!CreateProcessW(host.c_str(),&cmd[0],NULL,NULL,FALSE,CREATE_NO_WINDOW,NULL,binDir.c_str(),&startup,&pi))return 2;
     bool ok=Connect(pi.dwProcessId,true,windowTest);DWORD exitCode=99;
-    if(ok){for(int i=0;i<600;i++){InterlockedExchange64(&state->heartbeat,GetTickCount64());if(WaitForSingleObject(pi.hProcess,100)==WAIT_OBJECT_0)break;}GetExitCodeProcess(pi.hProcess,&exitCode);}
+    if(ok){for(int i=0;i<3000;i++){InterlockedExchange64(&state->heartbeat,GetTickCount64());if(WaitForSingleObject(pi.hProcess,100)==WAIT_OBJECT_0)break;}GetExitCodeProcess(pi.hProcess,&exitCode);}
     Disconnect();CloseHandle(pi.hThread);CloseHandle(pi.hProcess);Log(exitCode==0?L"独立进程自测通过。":L"独立进程自测失败。");return ok&&exitCode==0?0:1;
 }
 int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,wchar_t*,int) {
@@ -230,13 +244,14 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,wchar_t*,int) {
         if(process)CloseHandle(process);return stopped?0:1;
     }
     HANDLE single=CreateMutexW(NULL,TRUE,L"Local\\StellarisCursorToolController");if(GetLastError()==ERROR_ALREADY_EXISTS){if(launch)PostMessageW(FindWindowW(L"StellarisCursorController",NULL),WM_APP+3,0,0);if(showSettings)PostMessageW(FindWindowW(L"StellarisCursorController",NULL),WM_APP+4,0,0);CloseHandle(single);return 0;}
-    int savedSize=GetPrivateProfileIntW(L"Cursor",L"Size",32,settingsPath.c_str());
-    if(ValidCursorSize(savedSize))desiredSize=savedSize;
+    CursorPreset preferences=ReadPreset(settingsPath,L"Cursor");desiredSize=preferences.size;desiredTheme=preferences.theme;lockWindow=preferences.lock;
+    hotkeyModifiers=ReadHotkeyModifiers(settingsPath);
+    INITCOMMONCONTROLSEX controls={sizeof(controls),ICC_BAR_CLASSES};InitCommonControlsEx(&controls);
     WNDCLASSW wc={};wc.lpfnWndProc=Procedure;wc.hInstance=instance;wc.lpszClassName=L"StellarisCursorController";RegisterClassW(&wc);
     windowHandle=CreateWindowExW(0,wc.lpszClassName,Text(UiText::WindowTitle),0,0,0,0,0,NULL,NULL,instance,NULL);
     tray.cbSize=sizeof(tray);tray.hWnd=windowHandle;tray.uID=1;tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP;tray.uCallbackMessage=WM_APP+1;tray.hIcon=LoadIconW(NULL,IDI_APPLICATION);wcsncpy_s(tray.szTip,Text(UiText::TrayWaiting),_TRUNCATE);Shell_NotifyIconW(NIM_ADD,&tray);
     SetTimer(windowHandle,1,1000,NULL);SetTimer(windowHandle,2,200,NULL);Tick();Log(L"CursorBridge started; validating the Stellaris executable and cursor resources before attaching.");
     if(launch)LaunchGame();
     if(showSettings)OpenSettings();
-    MSG msg;while(GetMessageW(&msg,NULL,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}CloseHandle(single);return 0;
+    MSG msg;while(GetMessageW(&msg,NULL,0,0)>0){if(panelWindow&&IsDialogMessageW(panelWindow,&msg))continue;TranslateMessage(&msg);DispatchMessageW(&msg);}CloseHandle(single);return 0;
 }

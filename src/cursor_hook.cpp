@@ -1,5 +1,7 @@
 #include "shared.h"
 #include "install_paths.h"
+#include "preferences.h"
+#include "window_lock.h"
 #include <algorithm>
 
 static HMODULE selfModule;
@@ -11,8 +13,8 @@ static DWORD ownerPid;
 static SRWLOCK lock=SRWLOCK_INIT;
 static HCURSOR(WINAPI* realSetCursor)(HCURSOR)=::SetCursor;
 struct Reference {int resource;Signature signature;};
-struct SizedCursor {HCURSOR cursor=nullptr;int size=0;ULONGLONG used=0;};
-struct Replacement {HCURSOR original;int resource,originalWidth;SizedCursor sized[3];};
+struct SizedCursor {HCURSOR cursor=nullptr;int size=0,theme=0;ULONGLONG used=0;};
+struct Replacement {HCURSOR original;int resource,originalWidth;Signature signature;SizedCursor sized[3];};
 static std::vector<Reference> refs;
 static std::vector<Replacement> cache;
 static std::vector<void**> slots;
@@ -50,24 +52,34 @@ static HCURSOR Resolve(HCURSOR input,bool active) {
     if(!active)return input;
     Replacement* found=nullptr;
     for(auto& c:cache)if(c.original==input){found=&c;break;}
+    // Windows may recycle a destroyed cursor's numeric handle. Revalidate its
+    // artwork instead of silently applying the previous cursor's semantic role.
+    if(found){
+        Signature current;
+        if(!CursorSignature(input,current)||!(current==found->signature)){
+            for(auto& h:found->sized)ReleaseSized(*found,h);
+            size_t index=(size_t)(found-cache.data());cache.erase(cache.begin()+index);found=nullptr;
+        }
+    }
     if(!found){
         Signature signature;if(!CursorSignature(input,signature))return input;
         int resource=-1;for(auto& r:refs)if(r.signature==signature){resource=r.resource;break;}
         if(resource<0){InterlockedIncrement(&state->unmatched);return input;}
         if(cache.size()>=64)return input;
-        cache.push_back({input,resource,signature.w,{}});found=&cache.back();
+        cache.push_back({input,resource,signature.w,signature,{}});found=&cache.back();
     }
-    int size=state->size;if(!ValidCursorSize(size))return input;
+    int size=state->size,theme=state->theme;if(!ValidCursorSize(size)||!ValidTheme(theme))return input;
     SizedCursor* sized=nullptr;
-    for(auto& h:found->sized)if(h.cursor&&h.size==size){sized=&h;break;}
+    for(auto& h:found->sized)if(h.cursor&&h.size==size&&h.theme==theme){sized=&h;break;}
     if(!sized) {
         // ANI handles contain many frame handles: retain only three recent sizes per original.
         for(auto& h:found->sized)if(!h.cursor){sized=&h;break;}
         if(!sized){sized=&found->sized[0];for(auto& h:found->sized)if(h.used<sized->used)sized=&h;ReleaseSized(*found,*sized);}
         TrimCache();
-        HCURSOR h=(HCURSOR)LoadImageW(NULL,ResourcePath(found->resource).c_str(),IMAGE_CURSOR,size,size,LR_LOADFROMFILE);
+        std::wstring asset=theme?ThemeResourcePath(Parent(ModulePath(selfModule)),theme,found->resource):ResourcePath(found->resource);
+        HCURSOR h=(HCURSOR)LoadImageW(NULL,asset.c_str(),IMAGE_CURSOR,size,size,LR_LOADFROMFILE);
         Signature s;if(!h||!CursorSignature(h,s)||s.w!=size||s.h!=size){if(h)DestroyCursor(h);return input;}
-        *sized={h,size,0};
+        *sized={h,size,theme,0};
         allocatedCursors++;
     }
     sized->used=++cacheClock;
@@ -88,13 +100,16 @@ static HCURSOR WINAPI SmallSetCursor(HCURSOR input) {
 }
 static DWORD WINAPI RefreshWorker(void*) {
     MSG queue;PeekMessageW(&queue,NULL,0,0,PM_NOREMOVE);
-    LONG lastEnabled=-1,lastSize=-1;bool previousContext=false;
+    LONG lastEnabled=-1,lastSize=-1,lastTheme=-1;bool previousContext=false;WindowLock windowLock;
     for(;;) {
-        Sleep(250);LONG enabled=Active()?1:0;LONG size=state->size;
+        Sleep(250);LONG enabled=Active()?1:0;LONG size=state->size,theme=state->theme;
+        HWND lockTarget=GetForegroundWindow();DWORD lockPid=0;GetWindowThreadProcessId(lockTarget,&lockPid);
+        bool lockRequested=enabled&&state->lockWindow&&lockPid==ownerPid&&!bypassContext;
+        InterlockedExchange(&state->lockActive,windowLock.Update(lockRequested?lockTarget:NULL)?1:0);
         bool context=GamePointerContext();
         if(bypassContext)continue;
         if(!context){previousContext=false;continue;}
-        if(enabled==lastEnabled&&size==lastSize&&previousContext)continue;
+        if(enabled==lastEnabled&&size==lastSize&&theme==lastTheme&&previousContext)continue;
         HWND foreground=GetForegroundWindow();DWORD tid=GetWindowThreadProcessId(foreground,NULL);
         // Refresh on the game's input queue; never set the cursor over the desktop.
         if(AttachThreadInput(GetCurrentThreadId(),tid,TRUE)) {
@@ -105,7 +120,7 @@ static DWORD WINAPI RefreshWorker(void*) {
             ReleaseSRWLockExclusive(&lock);
             AttachThreadInput(GetCurrentThreadId(),tid,FALSE);
             InterlockedIncrement((volatile LONG*)&state->reserved);
-            lastEnabled=enabled;lastSize=size;previousContext=true;
+            lastEnabled=enabled;lastSize=size;lastTheme=theme;previousContext=true;
         }else {
             InterlockedExchange((volatile LONG*)&state->reserved,(LONG)(0x80000000U|GetLastError()));
         }
@@ -151,7 +166,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI Initialize(void* param) {
     mapHandle=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,MapName(ownerPid).c_str());
     if(!mapHandle)return 0;
     state=(Shared*)MapViewOfFile(mapHandle,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));
-    if(!state||state->magic!=CURSOR_MAGIC||state->version!=1||state->pid!=ownerPid){state=nullptr;return 0;}
+    if(!state||state->magic!=CURSOR_MAGIC||state->version!=CURSOR_ABI_VERSION||state->pid!=ownerPid){state=nullptr;return 0;}
     // References are loaded through unpatched Win32 APIs, using untouched game assets.
     for(int i=0;i<9;i++) {
         HCURSOR h=LoadCursorFromFileW(ResourcePath(i).c_str());Signature signature;

@@ -1,4 +1,5 @@
 #include "shared.h"
+#include "preferences.h"
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -85,6 +86,42 @@ int wmain(int argc,wchar_t** argv) {
         Signature intact;Check(CursorSignature(original,intact)&&intact==before,"original_handle_not_mutated");
         SetCursor(NULL);DestroyCursor(original);
     }
+    // Exercise every native theme at every supported size, including animated
+    // movement/busy cursors and size/theme cache eviction under repeated changes.
+    HCURSOR themeOriginals[9]={};for(int resource=0;resource<9;resource++)themeOriginals[resource]=LoadCursorFromFileW(ResourcePath(resource).c_str());
+    int canonicalResources[9]={};
+    // Some installed-game roles are byte-identical (normal/selected/dragselect
+    // in 4.5.1). A bitmap-only adapter must use the first matching role; it must
+    // not invent a distinction that the engine's loaded pointer does not expose.
+    for(int resource=0;resource<9;resource++){
+        canonicalResources[resource]=resource;Signature input;CursorSignature(themeOriginals[resource],input);bool matched=false;
+        for(int candidate=0;candidate<9&&!matched;candidate++)for(int size:{0,32}){
+            HCURSOR probe=size?(HCURSOR)LoadImageW(NULL,ResourcePath(candidate).c_str(),IMAGE_CURSOR,size,size,LR_LOADFROMFILE):LoadCursorFromFileW(ResourcePath(candidate).c_str());
+            Signature signature;if(probe&&CursorSignature(probe,signature)&&signature==input){canonicalResources[resource]=candidate;matched=true;}
+            if(probe)DestroyCursor(probe);if(matched)break;
+        }
+    }
+    for(int theme=1;theme<=12;theme++)for(int resource=0;resource<9;resource++){
+        HCURSOR original=themeOriginals[resource];
+        Check(original!=NULL,"theme_original_loaded");if(!original)continue;
+        for(int size=1;size<=96;size++){
+            InterlockedExchange(&s->theme,theme);InterlockedExchange(&s->size,size);InterlockedExchange(&s->enabled,1);
+            SetCursor(original);HCURSOR actual=GetCursor();Signature after,desired;
+            HCURSOR expected=(HCURSOR)LoadImageW(NULL,ThemeResourcePath(Parent(ModulePath()),theme,canonicalResources[resource]).c_str(),IMAGE_CURSOR,size,size,LR_LOADFROMFILE);
+            std::string caseId="_theme"+std::to_string(theme)+"_resource"+std::to_string(resource)+"_size"+std::to_string(size);
+            Check(expected&&CursorSignature(expected,desired)&&CursorSignature(actual,after)&&after==desired,("theme_size_hotspot_and_pixels"+caseId).c_str());
+            Check(SameDrawing(actual,expected,0,size),("theme_render_matches_generated_art"+caseId).c_str());
+            if(resource>=5)Check(SameDrawing(actual,expected,1,size),"theme_animation_second_frame");
+            Check(SetCursor(original)==original,"theme_previous_handle_semantics");
+            if(expected)DestroyCursor(expected);
+        }
+        InterlockedExchange(&s->enabled,0);SetCursor(original);Check(GetCursor()==original,"theme_disable_restores_original_handle");
+        SetCursor(NULL);
+    }
+    for(HCURSOR original:themeOriginals)if(original)DestroyCursor(original);
+    InterlockedExchange(&s->theme,13);InterlockedExchange(&s->enabled,1);
+    HCURSOR invalidTheme=LoadCursorFromFileW(ResourcePath(0).c_str());SetCursor(invalidTheme);Check(GetCursor()==invalidTheme,"invalid_theme_fails_open");SetCursor(NULL);DestroyCursor(invalidTheme);
+    InterlockedExchange(&s->theme,0);
     InterlockedExchange(&s->enabled,1);InterlockedExchange(&s->size,32);
     HCURSOR windows=LoadCursorW(NULL,IDC_ARROW);SetCursor(windows);Check(GetCursor()==windows,"unrecognized_Windows_cursor_untouched");
     HCURSOR original=LoadCursorFromFileW(ResourcePath(0).c_str());Signature before;CursorSignature(original,before);
