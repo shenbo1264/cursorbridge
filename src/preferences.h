@@ -17,8 +17,11 @@ inline CursorPreset ReadPreset(const std::wstring& path,const std::wstring& sect
     int lock=GetPrivateProfileIntW(section.c_str(),L"Lock",fallback.lock?1:0,path.c_str());
     return {ValidCursorSize(size)?size:fallback.size,ValidTheme(theme)?theme:fallback.theme,lock==1};
 }
-inline void WritePreset(const std::wstring& path,const std::wstring& section,const CursorPreset& preset){
-    WritePrivateProfileStringW(section.c_str(),L"Size",std::to_wstring(preset.size).c_str(),path.c_str());
-    WritePrivateProfileStringW(section.c_str(),L"Theme",std::to_wstring(preset.theme).c_str(),path.c_str());
-    WritePrivateProfileStringW(section.c_str(),L"Lock",preset.lock?L"1":L"0",path.c_str());
+inline bool ReadAdjustmentEnabled(const std::wstring& path){return GetPrivateProfileIntW(L"Cursor",L"Enabled",1,path.c_str())!=0;}
+inline bool WriteAdjustmentEnabled(const std::wstring& path,bool enabled){return WritePrivateProfileStringW(L"Cursor",L"Enabled",enabled?L"1":L"0",path.c_str())!=FALSE;}
+inline bool WritePreset(const std::wstring& path,const std::wstring& section,const CursorPreset& preset){
+    bool size=WritePrivateProfileStringW(section.c_str(),L"Size",std::to_wstring(preset.size).c_str(),path.c_str())!=FALSE;
+    bool theme=WritePrivateProfileStringW(section.c_str(),L"Theme",std::to_wstring(preset.theme).c_str(),path.c_str())!=FALSE;
+    bool lock=WritePrivateProfileStringW(section.c_str(),L"Lock",preset.lock?L"1":L"0",path.c_str())!=FALSE;
+    return size&&theme&&lock;
 }

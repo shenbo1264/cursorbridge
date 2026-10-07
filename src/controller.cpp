@@ -25,6 +25,7 @@ static int desiredTheme=0;
 static bool lockWindow=false;
 static UINT hotkeyModifiers=MOD_CONTROL|MOD_ALT;
 static bool enabled=true;
+static bool preferencesSaveFailed=false;
 static std::wstring binDir,logPath;
 static std::wstring gameExe,defaultGameLog,gameLog,configuredGameLog,dataDirectory,settingsPath;
 static bool explicitGameExe=false;
@@ -34,8 +35,19 @@ static LanguageMonitor uiLanguage;
 static const wchar_t* Text(UiText key){return UiString(uiLanguage.language,key);}
 static BridgeTail bridge;
 static NOTIFYICONDATAW tray={};
+static HICON applicationIcon=NULL;
+static const UINT taskbarCreatedMessage=RegisterWindowMessageW(L"TaskbarCreated");
+static HICON LoadApplicationIcon(){
+    HCURSOR cursor=(HCURSOR)LoadImageW(NULL,ThemeResourcePath(binDir,2,0).c_str(),IMAGE_CURSOR,32,32,LR_LOADFROMFILE);
+    if(!cursor)return NULL;ICONINFO info={};HICON icon=NULL;
+    if(GetIconInfo(cursor,&info)){info.fIcon=TRUE;icon=CreateIconIndirect(&info);if(info.hbmMask)DeleteObject(info.hbmMask);if(info.hbmColor)DeleteObject(info.hbmColor);}
+    DestroyCursor(cursor);return icon;
+}
 static int IndexSize(int i){static const int sizes[]={24,32,40,48};return sizes[i];}
-static void SaveSize(){WritePreset(settingsPath,L"Cursor",{desiredSize,desiredTheme,lockWindow});}
+static void SaveSize(){
+    bool preset=WritePreset(settingsPath,L"Cursor",{desiredSize,desiredTheme,lockWindow});
+    bool activation=WriteAdjustmentEnabled(settingsPath,enabled);preferencesSaveFailed=!preset||!activation;
+}
 static void PublishPreferences(){
     if(!state)return;
     InterlockedExchange(&state->size,desiredSize);InterlockedExchange(&state->theme,desiredTheme);
@@ -186,7 +198,7 @@ static void BridgeTick() {
     bridge.Poll([](const BridgeCommand& command){
         if(command.kind==BridgeKind::Settings){OpenSettings();return;}
         if(command.kind==BridgeKind::Size){if(desiredSize==command.size&&enabled)return;desiredSize=command.size;enabled=true;SaveSize();Log(L"游戏内按钮："+std::to_wstring(desiredSize)+L" 像素。");}
-        else if(command.kind==BridgeKind::Restore){if(!enabled)return;enabled=false;Log(L"游戏内按钮：恢复原光标。");}
+        else if(command.kind==BridgeKind::Restore){if(!enabled)return;enabled=false;SaveSize();Log(L"游戏内按钮：恢复原光标。");}
         PublishPreferences();SyncPanel();
     });
 }
@@ -194,12 +206,12 @@ static void StartOrConnect(){
     if(connecting||launchDeadline)return;
     panelNotice.clear();
     if(attached&&WaitForSingleObject(attached,0)==WAIT_OBJECT_0)Tick();
-    if(attached){enabled=true;PublishPreferences();SyncPanel();return;}
+    if(attached){ReturnToTarget();SyncPanel();return;}
     foundTargetPid=FindGame();
     if(foundTargetPid){
         failedPid=0;connecting=true;SyncLaunchButton();if(panelWindow)UpdateWindow(panelWindow);
         bool connected=Connect(foundTargetPid);connecting=false;
-        if(connected){enabled=true;PublishPreferences();}else failedPid=foundTargetPid;
+        if(connected)PublishPreferences();else failedPid=foundTargetPid;
         SyncPanel();return;
     }
     if(targetProbeFailed){panelNotice=PanelLabel(L"无法确认同名程序的路径，请检查目标权限后重试",L"Cannot verify a matching process path; check target permissions and retry");SyncPanel();return;}
@@ -213,7 +225,7 @@ static void StartOrConnect(){
         DWORD error=GetLastError();launchDeadline=0;
         panelNotice=std::wstring(PanelLabel(L"启动失败，错误码 ",L"Launch failed, error "))+std::to_wstring(error);
         Log(panelNotice);
-    }else {enabled=true;Log(L"已请求启动目标；等待进程出现后自动连接。");}
+    }else {Log(L"已请求启动目标；等待进程出现后自动连接。");}
     if(request.hProcess)CloseHandle(request.hProcess);SyncPanel();
 }
 static void LaunchGame(){StartOrConnect();}
@@ -221,8 +233,8 @@ static void Menu() {
     RefreshUiLanguage();
     HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,5,Text(UiText::Slider));
     auto targetName=std::filesystem::path(gameExe).filename().wstring();
-    std::wstring launchLabel=std::wstring(Text(UiText::Launch))+(targetName.empty()?L"":L" · "+targetName);
-    AppendMenuW(menu,MF_STRING,1,launchLabel.c_str());
+    std::wstring launchLabel=std::wstring(LaunchButtonLabel())+(targetName.empty()?L"":L" · "+targetName);
+    AppendMenuW(menu,MF_STRING|((connecting||launchDeadline)?MF_GRAYED:0),1,launchLabel.c_str());
     AppendMenuW(menu,MF_STRING,6,Text(UiText::ChooseGame));
     AppendMenuW(menu,MF_STRING,2,Text(enabled?UiText::Pause:UiText::Enable));
     for(int i=0;i<4;i++){int size=IndexSize(i);AppendMenuW(menu,MF_STRING|(size==desiredSize?MF_CHECKED:0),10+i,(std::to_wstring(size)+Text(UiText::Pixel)).c_str());}
@@ -231,19 +243,21 @@ static void Menu() {
     if(cmd==1)LaunchGame();
     else if(cmd==5)OpenSettings();
     else if(cmd==6)ChooseGame();
-    else if(cmd==2){enabled=!enabled;PublishPreferences();SyncPanel();}
+    else if(cmd==2)SetAdjustmentEnabled(!enabled);
     else if(cmd>=10&&cmd<=13)ApplySize(IndexSize(cmd-10),true);
     else if(cmd==3)failedPid=0;
     else if(cmd==4)DestroyWindow(windowHandle);
     if(cmd!=4)Tick();
 }
 static LRESULT CALLBACK Procedure(HWND h,UINT m,WPARAM w,LPARAM l) {
+    if(taskbarCreatedMessage&&m==taskbarCreatedMessage){Shell_NotifyIconW(NIM_ADD,&tray);return 0;}
     if(m==WM_HOTKEY){HandleHotkey((int)w);return 0;}
     if(m==WM_APP+4){OpenSettings();return 0;}
     if(m==WM_APP+3){LaunchGame();return 0;}
     if(m==WM_CLOSE){DestroyWindow(h);return 0;}
     if(m==WM_TIMER){if(w==2){BridgeTick();PanelTick();RefreshHotkeys();}else Tick();return 0;}
-    if(m==WM_APP+1&&(l==WM_RBUTTONUP||l==WM_LBUTTONUP)){Menu();return 0;}
+    if(m==WM_APP+1&&l==WM_RBUTTONUP){Menu();return 0;}
+    if(m==WM_APP+1&&l==WM_LBUTTONUP){OpenSettings();return 0;}
     if(m==WM_DESTROY){ClearHotkeys();if(panelWindow)DestroyWindow(panelWindow);KillTimer(h,1);KillTimer(h,2);Disconnect();Shell_NotifyIconW(NIM_DELETE,&tray);PostQuitMessage(0);return 0;}
     return DefWindowProcW(h,m,w,l);
 }
@@ -308,14 +322,15 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,wchar_t*,int) {
     }
     binDir=runtime;Log(L"Verified embedded runtime ready: "+runtime);
 #endif
-    CursorPreset preferences=ReadPreset(settingsPath,L"Cursor");desiredSize=preferences.size;desiredTheme=preferences.theme;lockWindow=preferences.lock;
+    CursorPreset preferences=ReadPreset(settingsPath,L"Cursor");desiredSize=preferences.size;desiredTheme=preferences.theme;lockWindow=preferences.lock;enabled=ReadAdjustmentEnabled(settingsPath);
     hotkeyModifiers=ReadHotkeyModifiers(settingsPath);
     INITCOMMONCONTROLSEX controls={sizeof(controls),ICC_BAR_CLASSES};InitCommonControlsEx(&controls);
-    WNDCLASSW wc={};wc.lpfnWndProc=Procedure;wc.hInstance=instance;wc.lpszClassName=L"StellarisCursorController";RegisterClassW(&wc);
+    applicationIcon=LoadApplicationIcon();
+    WNDCLASSW wc={};wc.lpfnWndProc=Procedure;wc.hInstance=instance;wc.hIcon=applicationIcon;wc.lpszClassName=L"StellarisCursorController";RegisterClassW(&wc);
     windowHandle=CreateWindowExW(0,wc.lpszClassName,Text(UiText::WindowTitle),0,0,0,0,0,NULL,NULL,instance,NULL);
-    tray.cbSize=sizeof(tray);tray.hWnd=windowHandle;tray.uID=1;tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP;tray.uCallbackMessage=WM_APP+1;tray.hIcon=LoadIconW(NULL,IDI_APPLICATION);wcsncpy_s(tray.szTip,Text(UiText::TrayWaiting),_TRUNCATE);Shell_NotifyIconW(NIM_ADD,&tray);
+    tray.cbSize=sizeof(tray);tray.hWnd=windowHandle;tray.uID=1;tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP;tray.uCallbackMessage=WM_APP+1;tray.hIcon=applicationIcon?applicationIcon:LoadIconW(NULL,IDI_APPLICATION);wcsncpy_s(tray.szTip,Text(UiText::TrayWaiting),_TRUNCATE);Shell_NotifyIconW(NIM_ADD,&tray);
     SetTimer(windowHandle,1,1000,NULL);SetTimer(windowHandle,2,200,NULL);Tick();Log(genericAdapter?L"CursorBridge started with the opt-in Windows x64 native-cursor adapter.":L"CursorBridge started with the Stellaris adapter.");
     if(launch)LaunchGame();
     if(showSettings)OpenSettings();
-    MSG msg;while(GetMessageW(&msg,NULL,0,0)>0){if(panelWindow&&IsDialogMessageW(panelWindow,&msg))continue;TranslateMessage(&msg);DispatchMessageW(&msg);}CloseHandle(single);return 0;
+    MSG msg;while(GetMessageW(&msg,NULL,0,0)>0){if(panelWindow&&IsDialogMessageW(panelWindow,&msg))continue;TranslateMessage(&msg);DispatchMessageW(&msg);}if(applicationIcon)DestroyIcon(applicationIcon);CloseHandle(single);return 0;
 }

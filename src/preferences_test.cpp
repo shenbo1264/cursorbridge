@@ -10,7 +10,7 @@ int wmain(){
     check(!std::filesystem::exists(file));
     for(int slot=1;slot<=3;slot++){
         std::wstring section=L"Preset"+std::to_wstring(slot);CursorPreset expected={slot*24,slot*4,slot==2};
-        WritePreset(file,section,expected);CursorPreset actual=ReadPreset(file,section);
+        check(WritePreset(file,section,expected));CursorPreset actual=ReadPreset(file,section);
         check(actual.size==expected.size&&actual.theme==expected.theme&&actual.lock==expected.lock);
     }
     WritePrivateProfileStringW(L"Cursor",L"Size",L"999",file.c_str());WritePrivateProfileStringW(L"Cursor",L"Theme",L"-1",file.c_str());WritePrivateProfileStringW(L"Cursor",L"Lock",L"2",file.c_str());
@@ -19,5 +19,9 @@ int wmain(){
     check(ReadHotkeyModifiers(file)==(MOD_CONTROL|MOD_ALT));
     WritePrivateProfileStringW(L"Hotkeys",L"AddShift",L"1",file.c_str());check(ReadHotkeyModifiers(file)==(MOD_CONTROL|MOD_ALT|MOD_SHIFT));
     WritePrivateProfileStringW(L"Hotkeys",L"AddShift",L"2",file.c_str());check(ReadHotkeyModifiers(file)==(MOD_CONTROL|MOD_ALT));
+    check(ReadAdjustmentEnabled(file));check(WriteAdjustmentEnabled(file,false));check(!ReadAdjustmentEnabled(file));
+    check(WriteAdjustmentEnabled(file,true));check(ReadAdjustmentEnabled(file));
+    std::wstring unwritable=file+L"\\missing\\settings.ini";
+    check(!WritePreset(unwritable,L"Cursor",{24,1,false}));check(!WriteAdjustmentEnabled(unwritable,false));
     check(DeleteFileW(file.c_str())!=FALSE);std::cout<<checks<<" checks, "<<failed<<" failed\n";return failed?1:0;
 }

@@ -1,4 +1,14 @@
-# Validation scope — v0.9.2
+# Validation scope — v0.9.3
+
+## v0.9.3 window and pause behavior
+
+- Windows x64 Release build with warnings-as-errors passed. Six local CTest groups passed, including 58 native-panel checks, 48 preference checks and 13 isolated real-process connection checks.
+- Pause survives size, style, preset, wheel and recommended-size edits; the selected size/style remain in preview. The saved global enable flag defaults on for existing users and preserves pause across restarts. The actual enable control publishes the requested state to our connected hidden host. Launch/connect/return never creates a duplicate host or silently cancels pause.
+- The hidden panel verifies native minimize support, absence of always-on-top, no timer-driven reopening, Chinese/English labels, separate accessible status text, preview, scoped wheel behavior and close/reopen resource cleanup. Preference tests cover failed writes as well as successful saved slots and activation state.
+- The actual Chinese and English interfaces were visually checked. Clicking Minimize produced the Computer Use result “window is minimized”; the normal open-settings action restored the same window. Pause followed by numeric edits and Tab/Right slider input stayed paused; restart retained the saved pause. Closing settings or pressing Escape removed its window while the controller remained running. Quit app ended the controller. Screenshots remain local.
+- Single-file launch from a Unicode/spaced folder passed; all 109 embedded runtime files were compared with the manifest. Exact-path stop passed. This revision keeps the hook DLL and ABI unchanged and does not claim new third-party game coverage.
+
+Screenshot checks, native control inspection and keyboard use do not establish full screen-reader compliance. Taskbar placement and tray icon clicks are not inferred from a minimized-window screenshot; the desktop capture API cannot screenshot a minimized window. Windows 10, high contrast and multi-monitor DPI transitions need separate testing.
 
 ## v0.9.2 launch/connect button
 

@@ -39,11 +39,14 @@ int wmain(){
     Expect(launched!=0,"button launches selected executable when absent");
     // A repeated launch request must not create another instance while pending.
     ClickAction();Expect(FindGame()==launched&&FixtureProcesses().size()==1,"pending launch keeps exactly one process");
-    Tick();Expect(attached&&attachedPid==launched&&state&&state->enabled&&state->size==13,"timer connects launched host and publishes selected size");
-    Expect(!launchDeadline&&!IsWindowEnabled(GetDlgItem(panelWindow,135)),"connected action is disabled after successful launch");
+    Tick();Expect(attached&&attachedPid==launched&&state&&!state->enabled&&state->size==13,"timer connects launched host and preserves chosen pause state");
+    Expect(!launchDeadline&&IsWindowEnabled(GetDlgItem(panelWindow,135)),"connected action allows returning to the target");
     HCURSOR original=LoadCursorW(NULL,IDC_ARROW);Signature before,after;CursorSignature(original,before);
     DWORD same=attachedPid;RestoreCursor();ClickAction();
-    Expect(attachedPid==same&&state&&state->enabled&&enabled,"action resumes paused connection without relaunch");
+    Expect(attachedPid==same&&state&&!state->enabled&&!enabled,"return action preserves pause without relaunch");
+    SendMessageW(enableCheck,BM_SETCHECK,BST_CHECKED,0);
+    SendMessageW(panelWindow,WM_COMMAND,MAKEWPARAM(137,BN_CLICKED),(LPARAM)enableCheck);
+    Expect(enabled&&state->enabled&&state->size==13,"explicit enable switch publishes adjustment to real connected host");
     CursorSignature(original,after);Expect(before==after,"controller action leaves desktop cursor resource unchanged");
     StopHost(launched);Tick();Expect(!attached&&panelWindow&&foundTargetPid==0,"target exit keeps settings and launch action available");
     // Start independently, emulate an earlier failed attempt, then invoke the
@@ -54,7 +57,7 @@ int wmain(){
     if(started){
         failedPid=info.dwProcessId;foundTargetPid=info.dwProcessId;enabled=false;SyncPanel();
         Expect(IsWindowEnabled(GetDlgItem(panelWindow,135))!=FALSE,"failed connection allows a manual retry");
-        ClickAction();Expect(attachedPid==info.dwProcessId&&failedPid==0&&state&&state->enabled,"button retries already running PID and enables adjustment");
+        ClickAction();Expect(attachedPid==info.dwProcessId&&failedPid==0&&state&&!state->enabled,"button retries already running PID without cancelling pause");
         DWORD retryPid=attachedPid;ClickAction();Expect(attachedPid==retryPid&&FindGame()==retryPid&&FixtureProcesses().size()==1,"connected action does not replace or duplicate host");
         StopHost(info.dwProcessId);CloseHandle(info.hThread);CloseHandle(info.hProcess);Tick();
     }
