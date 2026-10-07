@@ -1,89 +1,83 @@
 # CursorBridge
 
-[简体中文](README.zh-CN.md) · [Download Windows x64](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.8.0) · [Roadmap](docs/ROADMAP.md)
+[简体中文](README.zh-CN.md) · [Download EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.0/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.0)
 
-An open-source project for making game cursors easier to see and customize. **The first working adapter is for Stellaris on Windows x64.** Built-in original themes are available; other games, user-imported packs and an editor are future work.
+**An independent MIT-licensed Windows x64 cursor customization tool.** Select a target application, resize its cursor and switch original themes without changing Windows desktop preferences. Started with Stellaris, v0.9 adds an **experimental general Win32 adapter** alongside the dedicated Stellaris adapter. The goal is a tool in the same category as YoloMouse; full feature parity is not claimed.
 
-![CursorBridge: 1–96 px, Windows x64, companion app required](docs/images/cover.png)
+## Download and run
 
-## What works in v0.8.0
+1. Download **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.0/CursorBridge.exe)** and double-click. No installer, manual extraction, Python or separate DLL download is needed.
+2. Click **Select target application…** in settings or the tray. Select the actual **64-bit application executable**. Start it normally or use **Launch target app**.
+3. Set size/style/color, then return to the target. Changes apply while it is foreground and the pointer is over its client area.
+4. Restore/pause or exit through the tray. The hook remains resident until the target exits; close the target before updating the tool.
 
-- **Frosted glass settings** with a clearer size readout, rounded controls, switches and a focused preview. Windows 11 uses native Desktop Acrylic; unsupported systems or disabled transparency use a readable opaque surface. See [design and UI verification scope](docs/UI_DESIGN.md).
-- A **1–96 pixel** keyboard-accessible slider and exact size input. 1 px is an extreme option; start with 24–32 px. 96 px is available for accessibility and demonstrations.
-- **12 original cursor sets**: contrast arrow, crosshair or ring × white, cyan, amber or pink. Friendly/attack/blocked state colors, grab states and native busy/movement animation are included. In 4.5.1, normal/selected/dragselect are identical source pointers and share the basic shape.
-- Three saved presets (size, theme, confinement), game-scoped shortcuts and optional foreground-only window confinement. See [controls and feature comparison](docs/YOLOMOUSE_COMPARISON.md).
-- Keeps the installed game's cursor art, hotspots and existing animated cursors. No game art is bundled in this repository or release.
-- Changes recognized Stellaris cursors while the game is foreground and the pointer is over its client area. Windows desktop pointer preferences are unchanged.
-- Restore the original cursor or quit the companion from its tray menu. The last selected size is saved locally.
-- Chinese UI when the game's language is Chinese; English for other languages. Reads the active `-userdir` profile as well as the default profile.
-- Detects Steam libraries and a running Stellaris installation; supports manual executable selection and command-line configuration.
-- An optional Workshop script mod opens the slider from an in-game event or an edict. **A companion program is required. Subscribing alone does not resize the cursor.**
+The EXE embeds our hook and 108 original theme files. First launch prepares a versioned cache under `%LOCALAPPDATA%/CursorBridge/runtime/`; all cached files are compared against embedded bytes before use. Components are never downloaded. Preferences/logs live under `%LOCALAPPDATA%/CursorBridge/`. Ordinary users only need the EXE; the optional full ZIP includes documentation, legacy launchers and Stellaris scripts.
 
-This is an early release, verified against **Stellaris 4.5.1 on Windows x64**. There is no Linux/macOS build, universal-game support or multiplayer certification.
+Existing users retain Steam/running-Stellaris discovery when no target is selected. A complete Stellaris installation uses its resource-aware adapter; another native x64 EXE uses the general adapter. Only the selected complete path is eligible, not every foreground application.
 
-![English frosted settings, inactive fallback](docs/images/glass-panel-en.jpg)
+## v0.9.0 preview
 
-## Download and start
+- Single-file launch, general interface/tray wording and explicit application selection.
+- Frosted settings, native controls, keyboard focus and actual-pixel preview. Honors OS transparency/high contrast; opaque fallback where needed. [UI details](docs/UI_DESIGN.md).
+- **1–96 px**, exact input and slider keyboard control. Start around 24–32 px; 1 px is extreme. Hotspots stay within the image.
+- **12 original themes**: arrow/crosshair/ring × white/cyan/amber/pink, outlines and animated state variants.
+- Three personal presets, target/panel-scoped hotkeys, optional Shift modifier and optional foreground-only confinement. Presets currently are shared across targets.
+- Restore/pause, original-handle protection, bounded cache, heartbeat recovery and path/architecture checks.
+- Chinese/English UI: Stellaris follows its game language; general applications follow Windows user UI language, Chinese or English fallback.
+- Optional Stellaris event/edict and local settings-page button. **Workshop subscription alone cannot resize cursors.**
 
-1. Open the [v0.8.0 Release page](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.8.0) and download `CursorBridge-Stellaris-windows-x64.zip` from Assets. The automatically generated “Source code” archives are for developers.
-2. Extract the entire ZIP to a folder you control. Keep `bin/StellarisCursor.exe`, `bin/StellarisCursorHook.dll` and `bin/assets/themes/` together. No installer or Python is needed for the companion.
-3. Run `Open Settings.cmd` or `bin/StellarisCursor.exe --settings`.
-4. Start Stellaris normally through Steam / its launcher. The tool connects automatically and shows its status in the tray and panel. Use the slider, close the panel and play.
-5. If the game is not found, right-click the tray icon and choose **Select Stellaris installation…**, then select `stellaris.exe` inside the installed game's folder. All nine `gfx/cursors` resources must be present.
+## Compatibility and YoloMouse scope
 
-Run at the same privilege level as the game. Normally neither needs administrator rights. No service, driver, startup registration, telemetry or internet access is used by the application. This initial binary is unsigned, and a public GitHub repository is not a security certification. Source, build instructions and SHA256 sums are provided for inspection; do not disable security software to use it.
+The general adapter is **experimental**, verified in our separate native x64 test host. It intercepts the target main module's `USER32!SetCursor` import. Software-drawn/hidden cursors, dynamically resolved APIs, calls made only in other modules, 32-bit applications and protected processes are unsupported by this backend. No universal-game compatibility or anti-cheat certification is claimed.
 
-The default configuration is `%LOCALAPPDATA%/CursorBridge/settings.ini`; diagnostics stay under `%LOCALAPPDATA%/CursorBridge/logs`. The game's default profile is resolved through Windows Known Folders, including redirected Documents folders. The executable location is remembered only if you explicitly select it.
+General original mode copies/scales observed Win32 cursors and clamps out-of-bounds hotspots. Arbitrary original ANI animation is not guaranteed. Stellaris recognizes nine installed CUR/ANI sources and preserves their native animation; no game artwork is bundled. Standard Win32 roles retain hand/busy/blocked theme variants. Unknown custom roles use the base theme without invented friendly/enemy meaning.
 
-### Commands
+Trails, glow/halo, zoom, original-art recoloring, arbitrary import/editor, per-cursor binding and automatic per-app profiles are **not implemented**. [YoloMouse comparison](docs/YOLOMOUSE_COMPARISON.md) · [Roadmap](docs/ROADMAP.md).
+
+No driver, service, autostart, telemetry or network client. Run at the target's normal privilege level. The preview is unsigned; obtain it from this repository's Releases and verify SHA256. [Security scope](SECURITY.md).
+
+## Commands
 
 ```text
-StellarisCursor.exe --settings
-StellarisCursor.exe --launch
-StellarisCursor.exe --stop
-StellarisCursor.exe --game-path "D:\SteamLibrary\steamapps\common\Stellaris\stellaris.exe" --settings
-StellarisCursor.exe --data-dir "D:\CursorBridgeData"
-StellarisCursor.exe --game-log "D:\CustomStellarisProfile\logs\game.log"
+CursorBridge.exe
+CursorBridge.exe --settings
+CursorBridge.exe --background
+CursorBridge.exe --launch
+CursorBridge.exe --stop
+CursorBridge.exe --app-path "D:\Apps\MyApp.exe" --settings
+CursorBridge.exe --game-path "D:\SteamLibrary\steamapps\common\Stellaris\stellaris.exe" --settings
+CursorBridge.exe --data-dir "D:\CursorBridgeData"
+CursorBridge.exe --game-log "D:\CustomStellarisProfile\logs\game.log"
 ```
 
-`--launch` runs the detected executable with `-skiploop`; launch through Steam/Paradox Launcher when you want the usual launcher workflow. `--game-log` is an advanced override for the in-game bridge. A game started with `-userdir` is normally detected without an override. Unsupported or incomplete options return exit code 2. Restart the game before changing to a new DLL build.
+`--app-path` selects the general adapter; `--game-path` requires a complete Stellaris layout. Manual selection auto-detects the adapter. Launch supplies `-skiploop` only for Stellaris. Keep using the normal launcher where required. `--game-log` is specific to the Stellaris bridge. Invalid/incomplete options return code 2.
 
-## Workshop integration
+## Stellaris integration
 
-The `workshop/` folder contains **original scripts and localization only**. It adds a single-player event and a free **Cursor size settings** edict. It uses uniquely named files, adds an on-action rather than replacing `00_on_actions.txt`, and does not replace UOD / Dark Blue GUI files. The core was smoke-tested with UOD and Dark Blue UI; this is not a blanket compatibility guarantee for every playset.
+The optional `workshop/` contains original event/edict scripts and ten locale folders. It adds uniquely named on-actions without replacing `00_on_actions.txt` or UOD/Dark Blue GUI files. No Workshop item is published yet. [Upload/local-install guide](docs/WORKSHOP_UPLOAD.md).
 
-No Workshop item has been published yet. Install the optional local mod through the launcher following [the upload/local-install guide](docs/WORKSHOP_UPLOAD.md). The companion also works through its tray without a mod. The bridge uses single-player script/event logs; old requests are ignored on connection. Start the companion before opening the event, or reopen the edict afterward. Multiplayer support has not been tested. The Workshop scripts affect the game checksum; achievements are not promised.
+The single-player bridge accepts only whitelisted new event/log records. Start the companion first or reopen the edict. Multiplayer is untested; the mod affects checksums and achievements are not promised. The slider is the companion panel, not an engine-native setting.
 
-The slider is a companion's floating panel. It is not a newly registered engine setting. An advanced **local settings-page button generator** is available in `tools/create_settings_patch.py`; it needs Python 3.10+ and a matching installed UI source. The generated GUI stays on your machine, loads after the UI it was generated from and must be regenerated after UI updates. The UOD + Dark Blue prototype was tested; vanilla/other UI variants need their own layout validation. Do not upload the generated third-party GUI to Workshop. See [architecture and limitations](docs/ARCHITECTURE.md).
+`tools/create_settings_patch.py` generates a local settings button from matching installed UI source. Python 3.10+ is required only for this tool. Generated third-party GUI stays local, loads after its source and must be regenerated after UI updates. Do not upload it. [Architecture](docs/ARCHITECTURE.md).
 
 ## Build and verify
 
-Requirements: Windows x64, Visual Studio 2022 C++ Build Tools with Windows SDK, CMake 3.21+, Python 3.10+ for fixture/mod tooling. No third-party hooking library is included.
-
-The optional original-cover generator also needs Pillow and a Windows Segoe UI font; it is not required to build or run the application.
+Windows x64, VS 2022 C++ Build Tools/Windows SDK, CMake 3.21+, Python 3.10+. No third-party hook library. Developer builds retain `StellarisCursor.exe`; public standalone releases use `CursorBridge.exe`.
 
 ```powershell
 cmake -S . -B build -A x64
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 python tools/make_test_assets.py "build/Synthetic Game"
-```
-
-The full hook regression needs `StellarisCursorTest.exe` next to the tool. Run from PowerShell and wait for its exit code:
-
-```powershell
 $fixture = Join-Path (Get-Location) 'build\Synthetic Game\stellaris.exe'
 $data = Join-Path (Get-Location) 'build\test-data'
-$test = Start-Process -FilePath 'build\bin\StellarisCursor.exe' -ArgumentList ('--self-test --game-path "{0}" --data-dir "{1}"' -f $fixture, $data) -PassThru -WindowStyle Hidden -Wait
+$test = Start-Process 'build\bin\StellarisCursor.exe' -ArgumentList ('--self-test --game-path "{0}" --data-dir "{1}"' -f $fixture, $data) -PassThru -WindowStyle Hidden -Wait
 $test.ExitCode
+$generic = Start-Process 'build\bin\StellarisCursor.exe' -ArgumentList '--self-test-generic' -PassThru -WindowStyle Hidden -Wait
+$generic.ExitCode
+python tools/verify_standalone.py --build-dir build
 ```
 
-The fixture executable is a **layout marker that is never run or injected**. The only test injection target is the separately built, exact-path `StellarisCursorTest.exe`. Tests use original synthetic CUR/ANI files, so CI does not need Stellaris. For local regression against a legitimately installed game, supply its executable as `--game-path`; the tests still run in the isolated test host, not a savegame. Reports are written under `build/logs` and the selected data directory.
+Tests inject only the exact-path dedicated test host, never the layout marker or a user application. Reports under `build/logs` cover 40,700 Stellaris and 34,969 general-adapter checks. Five CTest groups cover bridge, language, paths, preferences and hidden native controls. Counts do not replace long-session/real-game testing. [Validation scope](docs/VALIDATION.md). Packaging regenerates original assets and checks a public-file allowlist.
 
-The native suite covers 40,700 checks: all nine resources × 96 sizes in original mode and 12 themes, hotspot bounds, rendered pixels, animated second frames, `SetCursor` return semantics, invalid values, original handles, restoration and heartbeat expiry. Bridge, language/profile, preferences and path tests run separately. See [validation scope](docs/VALIDATION.md); these counts do not replace long-session gameplay testing.
-
-## Contribute
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and the [roadmap](docs/ROADMAP.md). Report the game version, tool version and steps to reproduce. Remove personal paths and save information from logs before posting.
-
-CursorBridge is independently implemented. It is not affiliated with Paradox Interactive, Steam or YoloMouse. Stellaris and related game assets belong to their respective owners. Original code, scripts, synthetic test fixtures and project artwork are available under the [MIT license](LICENSE); game resources and locally generated third-party UI are not covered by that license.
+[Contribute](CONTRIBUTING.md) · [Security](SECURITY.md). Remove personal paths from shared logs. Independent of Paradox Interactive, Steam and YoloMouse. Original code/scripts/fixtures/art use [MIT](LICENSE); game assets and generated third-party GUI do not.

@@ -12,6 +12,8 @@ int wmain(){
     check(Utf8Path(std::string(1,'\xff')).empty(),"invalid_UTF8_rejected");
     check(!DefaultGameProfile().empty()&&!DefaultDataDirectory().empty(),"Windows_known_folders_available");
     check(!ValidGameExecutable(L"relative\\stellaris.exe"),"relative_executable_rejected");
+    check(ValidApplicationExecutable(ModulePath()),"own_native_x64_executable_accepted");
+    check(!ValidApplicationExecutable(L"relative.exe"),"generic_relative_path_rejected");
     check(ResourcePathAt(L"C:\\Game",8)==L"C:\\Game\\gfx\\cursors\\attack_move.ani","game_adapter_cursor_path");
     wchar_t temp[32768]={};GetTempPathW(32768,temp);
     std::wstring fixture=std::wstring(temp)+L"CursorBridge-path-test-"+std::to_wstring(GetCurrentProcessId())+L" 中文";
@@ -22,6 +24,7 @@ int wmain(){
     for(int i=0;i<9;i++)write(ResourcePathAt(fixture,i));
     check(ValidGameExecutable(fixture+L"\\stellaris.exe"),"complete_fixture_with_spaces_and_Unicode");
     write(fixture+L"\\other.exe");check(!ValidGameExecutable(fixture+L"\\other.exe"),"wrong_executable_name_rejected");
+    check(!ValidApplicationExecutable(fixture+L"\\other.exe"),"generic_non_PE_executable_rejected");
     std::filesystem::remove(ResourcePathAt(fixture,8));
     check(!ValidGameExecutable(fixture+L"\\stellaris.exe"),"missing_animated_cursor_rejected");
     // Delete only the unique fixture we just created under GetTempPath.

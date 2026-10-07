@@ -8,7 +8,7 @@
 
 inline std::wstring gameDirectory;
 static const DWORD CURSOR_MAGIC=0x53435552;
-static constexpr DWORD CURSOR_ABI_VERSION=2;
+static constexpr DWORD CURSOR_ABI_VERSION=3;
 static constexpr int CURSOR_MIN_SIZE=1, CURSOR_MAX_SIZE=96;
 static constexpr int CURSOR_SIZE_COUNT=CURSOR_MAX_SIZE-CURSOR_MIN_SIZE+1;
 inline bool ValidCursorSize(int size){return size>=CURSOR_MIN_SIZE&&size<=CURSOR_MAX_SIZE;}
@@ -24,7 +24,7 @@ struct Shared {
     volatile LONG calls,replaced,unmatched,lastInput,lastOutput,lastResource;
     volatile LONG theme,lockWindow,lockActive;
 };
-struct InitArgs { DWORD size; DWORD test; wchar_t targetExe[32768]; wchar_t resourceDirectory[32768]; };
+struct InitArgs { DWORD size; DWORD test; DWORD generic; wchar_t targetExe[32768]; wchar_t resourceDirectory[32768]; };
 inline std::wstring MapName(DWORD pid) { return L"Local\\StellarisCursor-"+std::to_wstring(pid); }
 inline std::wstring ModulePath(HMODULE m=NULL) { wchar_t p[32768]={};GetModuleFileNameW(m,p,32768);return p; }
 inline std::wstring Parent(const std::wstring& p) { return p.substr(0,p.find_last_of(L"\\/")); }
@@ -53,4 +53,16 @@ inline bool CursorSignature(HCURSOR c,Signature& s) {
     }
     if(ii.hbmColor)DeleteObject(ii.hbmColor);if(ii.hbmMask)DeleteObject(ii.hbmMask);
     return ok&&s.w>0&&s.h>0;
+}
+// Native scaling can round a centered hotspot to (1,1) for a 1px image.
+// Own the copy, keep its pixel/mask data, and clamp only the invalid hotspot.
+inline HCURSOR ResizeNativeCursor(HCURSOR original,int size){
+    HCURSOR copy=(HCURSOR)CopyImage(original,IMAGE_CURSOR,size,size,0);if(!copy)return NULL;
+    ICONINFO info={};if(!GetIconInfo(copy,&info)){DestroyCursor(copy);return NULL;}
+    HCURSOR result=copy;
+    if(info.xHotspot>=(DWORD)size||info.yHotspot>=(DWORD)size){
+        info.xHotspot=(std::min)(info.xHotspot,(DWORD)size-1);info.yHotspot=(std::min)(info.yHotspot,(DWORD)size-1);
+        result=(HCURSOR)CreateIconIndirect(&info);DestroyCursor(copy);
+    }
+    if(info.hbmColor)DeleteObject(info.hbmColor);if(info.hbmMask)DeleteObject(info.hbmMask);return result;
 }

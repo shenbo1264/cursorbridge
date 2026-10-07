@@ -9,6 +9,7 @@ static Shared* state;
 static HANDLE mapHandle;
 static bool isTest=false;
 static bool bypassContext=false;
+static bool genericAdapter=false;
 static DWORD ownerPid;
 static SRWLOCK lock=SRWLOCK_INIT;
 static HCURSOR(WINAPI* realSetCursor)(HCURSOR)=::SetCursor;
@@ -64,6 +65,7 @@ static HCURSOR Resolve(HCURSOR input,bool active) {
     if(!found){
         Signature signature;if(!CursorSignature(input,signature))return input;
         int resource=-1;for(auto& r:refs)if(r.signature==signature){resource=r.resource;break;}
+        if(resource<0&&genericAdapter)resource=0; // Unknown roles use the base theme; do not invent game semantics.
         if(resource<0){InterlockedIncrement(&state->unmatched);return input;}
         if(cache.size()>=64)return input;
         cache.push_back({input,resource,signature.w,signature,{}});found=&cache.back();
@@ -77,7 +79,8 @@ static HCURSOR Resolve(HCURSOR input,bool active) {
         if(!sized){sized=&found->sized[0];for(auto& h:found->sized)if(h.used<sized->used)sized=&h;ReleaseSized(*found,*sized);}
         TrimCache();
         std::wstring asset=theme?ThemeResourcePath(Parent(ModulePath(selfModule)),theme,found->resource):ResourcePath(found->resource);
-        HCURSOR h=(HCURSOR)LoadImageW(NULL,asset.c_str(),IMAGE_CURSOR,size,size,LR_LOADFROMFILE);
+        HCURSOR h=genericAdapter&&!theme?ResizeNativeCursor(input,size):
+            (HCURSOR)LoadImageW(NULL,asset.c_str(),IMAGE_CURSOR,size,size,LR_LOADFROMFILE);
         Signature s;if(!h||!CursorSignature(h,s)||s.w!=size||s.h!=size){if(h)DestroyCursor(h);return input;}
         *sized={h,size,theme,0};
         allocatedCursors++;
@@ -154,13 +157,15 @@ extern "C" __declspec(dllexport) DWORD WINAPI Initialize(void* param) {
     if(state)return 1;
     if(!param||((InitArgs*)param)->size!=sizeof(InitArgs))return 0;
     InitArgs args=*(InitArgs*)param;
-    if(args.test>2||!wmemchr(args.targetExe,0,32768)||!wmemchr(args.resourceDirectory,0,32768))return 0;
+    if(args.test>2||args.generic>1||!wmemchr(args.targetExe,0,32768)||!wmemchr(args.resourceDirectory,0,32768))return 0;
     std::wstring path=ModulePath();std::wstring testPath=Parent(ModulePath(selfModule))+L"\\StellarisCursorTest.exe";
     isTest=args.test!=0&&SamePath(path,testPath);
     bypassContext=isTest&&args.test==1;
+    genericAdapter=args.generic!=0;
     if(!SamePath(path,args.targetExe))return 0;
     gameDirectory=AbsolutePath(args.resourceDirectory);
-    if(isTest){if(!ValidGameExecutable(gameDirectory+L"\\stellaris.exe"))return 0;}
+    if(genericAdapter){if((args.test&&!isTest)||!ValidApplicationExecutable(path)||!SamePath(gameDirectory,Parent(path)))return 0;}
+    else if(isTest){if(!ValidGameExecutable(gameDirectory+L"\\stellaris.exe"))return 0;}
     else if(args.test||!ValidGameExecutable(path)||!SamePath(gameDirectory,Parent(path)))return 0;
     ownerPid=GetCurrentProcessId();
     mapHandle=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,MapName(ownerPid).c_str());
@@ -168,7 +173,13 @@ extern "C" __declspec(dllexport) DWORD WINAPI Initialize(void* param) {
     state=(Shared*)MapViewOfFile(mapHandle,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));
     if(!state||state->magic!=CURSOR_MAGIC||state->version!=CURSOR_ABI_VERSION||state->pid!=ownerPid){state=nullptr;return 0;}
     // References are loaded through unpatched Win32 APIs, using untouched game assets.
-    for(int i=0;i<9;i++) {
+    if(genericAdapter){
+        struct SystemRole {LPCWSTR name;int role;};
+        for(auto source:{SystemRole{IDC_ARROW,0},SystemRole{IDC_HAND,3},SystemRole{IDC_SIZEALL,4},SystemRole{IDC_WAIT,5},SystemRole{IDC_APPSTARTING,5},SystemRole{IDC_NO,6}}){
+            HCURSOR h=LoadCursorW(NULL,source.name);Signature signature;
+            if(h&&CursorSignature(h,signature))refs.push_back({source.role,signature});
+        }
+    }else for(int i=0;i<9;i++) {
         HCURSOR h=LoadCursorFromFileW(ResourcePath(i).c_str());Signature signature;
         if(h&&CursorSignature(h,signature))refs.push_back({i,signature});
         if(h)DestroyCursor(h);
@@ -177,7 +188,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI Initialize(void* param) {
         if(h)DestroyCursor(h);
     }
     state->mappings=(LONG)refs.size();
-    if(refs.empty()||!PatchMainImport()){state->enabled=0;return 0;}
+    if((!genericAdapter&&refs.empty())||!PatchMainImport()){state->enabled=0;return 0;}
     state->hookSlots=(LONG)slots.size();
     HANDLE worker=CreateThread(NULL,0,RefreshWorker,NULL,0,NULL);if(worker)CloseHandle(worker);
     return 1;

@@ -1,64 +1,62 @@
 # CursorBridge
 
-[English](README.md) · [下载 Windows x64 程序](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.8.0) · [后续路线](docs/ROADMAP.md)
+[English](README.md) · [直接下载 EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.0/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.0)
 
-一个让游戏光标更容易看清、也更容易调整的开源项目。**目前已实现的是《群星》的 Windows x64 版本**，已有原创样式与配色；其他游戏、用户导入的样式包与编辑器仍在规划中。
-
-![CursorBridge：1–96 像素，Windows x64，需要配套程序](docs/images/cover.png)
-
-## 当前功能
-
-- **浅色磨砂玻璃设置面板**：大尺寸读数、圆角控件、开关和独立预览。Windows 11 使用原生 Desktop Acrylic；系统关闭透明或不支持时使用清晰的实色背景。[设计依据与验收范围](docs/UI_DESIGN.md)。
-- **1–96 像素滑块与精确数字输入**，支持方向键、Home/End、Page Up/Down 和 Tab 导航。建议先用 24–32 px；1 px 是极限选项，96 px 可用于大光标需求或演示。
-- **12 套原创光标**：高对比箭头、十字准星、圆环 × 白、青、琥珀、粉四色。友军、攻击和禁止移动使用独立状态色，并有抓取状态、忙碌旋转动画与移动脉冲动画。4.5.1 的普通／选中／框选原图完全一致，因此这三个状态共用基础指针。
-- **3 个个人预设、游戏内快捷键与可选窗口锁定**；预设保存尺寸、样式和锁定状态。快捷键与对标范围见[功能对照](docs/YOLOMOUSE_COMPARISON.md)。
-- 使用玩家已安装游戏中的光标，保留原有造型、点击热点和动画。项目与下载包均不附带游戏原始素材。
-- 游戏处于前台、鼠标位于游戏客户区时，调整已识别的《群星》光标。Windows 桌面鼠标偏好保持原样。
-- 随时恢复原光标；退出程序也会请求恢复。尺寸选择保存在本机。
-- 游戏设置为中文时显示中文，其他语言显示英文；支持默认用户目录和 `-userdir` 独立目录。
-- 自动识别 Steam 游戏库及运行中的《群星》，也能从托盘菜单手动选择安装位置。
-- 可选的工坊脚本模组提供开局事件和法令入口。**需要运行配套程序，仅订阅模组不能改变光标尺寸。**
-
-这是首个公开测试版本，已针对 **Windows x64 /《群星》4.5.1** 验证。尚未支持 Linux、macOS、任意游戏或经过验证的多人联机。
-
-![中文磨砂设置面板，未激活时的实色回退](docs/images/glass-panel-zh.jpg)
+**MIT 开源的 Windows x64 光标调整工具。** 选择目标程序，调整大小、样式和颜色，保存预设并使用快捷键。从《群星》起步，v0.9 增加实验性通用 Win32 后端，保留《群星》专属适配。方向是 YoloMouse 同类的开源工具，目前尚未实现完整功能对等。
 
 ## 下载与使用
 
-1. 打开 [v0.8.0 Release 页面](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.8.0)，在 Assets 下载 `CursorBridge-Stellaris-windows-x64.zip`。自动生成的 Source code 压缩包供开发者使用。
-2. 完整解压到自己有写入权限的目录，保留 `bin/StellarisCursor.exe`、`bin/StellarisCursorHook.dll` 与 `bin/assets/themes/` 的相对位置。配套程序无需安装器或 Python。
-3. 双击 `Open Settings.cmd`，或运行 `bin/StellarisCursor.exe --settings`。
-4. 正常通过 Steam / 启动器进入游戏，程序会自动连接。拖动滑块，关闭面板后继续游戏。
-5. 如果没有找到游戏，右键系统托盘里的工具图标，选择“选择《群星》安装位置…”，定位到完整游戏目录中的 `stellaris.exe`。
+1. 下载 **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.0/CursorBridge.exe)**，双击打开设置。无需安装器、手动解压、Python 或单独下载 DLL。
+2. 点击设置页上方或托盘中的 **选择目标程序…**，选中实际运行的 **64 位程序 EXE**。正常启动它，或点击 **启动目标程序**。
+3. 调节大小、样式与颜色，回到目标使用。目标在前台、鼠标位于客户区时才应用调整。
+4. 从面板恢复、托盘暂停或退出。更新前关闭目标程序：已加载的钩子驻留到目标退出。
 
-游戏与程序应处于相同权限级别，通常均不需要管理员权限。程序不安装服务或驱动，不注册开机启动，不收集遥测，不发起网络请求。首版程序尚未签名；GitHub 开源并不等于安全认证。我们提供源码、构建说明与 SHA256 校验，不建议为运行它关闭安全软件。
+EXE 内置钩子及 108 个原创光标文件，首次运行在 `%LOCALAPPDATA%/CursorBridge/runtime/` 准备版本化缓存，每次使用前逐文件与内置数据比对，不联网下载组件。设置与日志在 `%LOCALAPPDATA%/CursorBridge/`。普通用户只需一个 EXE；完整 ZIP 另含文档、兼容启动脚本和工坊脚本。
 
-用户设置位于 `%LOCALAPPDATA%/CursorBridge/settings.ini`，本地日志位于同目录的 `logs` 文件夹。游戏文档目录通过 Windows 已知文件夹接口查找，可适配重定向的 Documents。只有玩家主动选择的游戏路径才会保存到配置文件。
+未指定目标时，已有用户保留 Steam／正在运行的《群星》发现。选择完整《群星》安装使用专属后端，其他有效 x64 EXE 使用通用后端。仅连接所选完整路径，不向所有前台应用自动加载钩子。
 
-## 工坊与原生设置页
+## v0.9.0 预览版
 
-`workshop/` 只包含原创脚本和本地化。启用后，单人开局事件与免费“鼠标大小设置”法令可打开滑块。核心包使用独立文件追加开局钩子，不覆盖 `00_on_actions.txt` 或 UOD / 暗蓝 UI。已在 UOD + Dark Blue UI 的独立配置中做过验证，但不能据此保证所有模组组合绝对兼容。
+- 双击单文件启动，界面与托盘通用文案，可明确选择目标程序。
+- 透明磨砂设置、原生控件、键盘焦点和实际像素预览。遵守系统透明／高对比设置，不支持时用实色背景。[材质与限制](docs/UI_DESIGN.md)。
+- **1–96 像素**整数调节，建议从 24–32 开始；1 像素为极限选项，已处理热点越界。
+- **12 套原创样式**：箭头／十字／圆环 × 白／青／琥珀／粉色，含轮廓与状态动画。
+- 三个个人预设、目标／面板前台快捷键、可选 Shift、窗口内锁定。目前预设由各目标共享。
+- 恢复／暂停、原句柄保护、缓存上限、心跳恢复、路径和位数检查。
+- 中英双语：《群星》跟随游戏语言；通用程序跟随 Windows 用户界面语言，中文显示中文，其他显示英文。
+- 可选《群星》事件／法令入口和本地设置页按钮。**仅订阅工坊无法调整光标，仍需伴侣程序。**
 
-当前尚未发布 Steam 工坊条目；可根据[上传与本地安装说明](docs/WORKSHOP_UPLOAD.md)注册本地模组。单独使用托盘面板不需要模组。连接时会跳过历史日志请求，请先启动工具再点击游戏入口，或在连接后重新打开法令。多人模式未验证；脚本模组会影响校验码，不承诺成就兼容。
+## 通用后端与 YoloMouse 对标
 
-实时滑块由配套程序提供，是浮动面板。`tools/create_settings_patch.py` 可根据本机已安装 UI 生成**可选的原生设置页按钮**，需要 Python 3.10+。生成后排在所使用 UI 与核心包之后，UI 更新后重新生成。UOD + 暗蓝的原型已验证，原版或其他 UI 的布局仍需分别测试。生成物包含本机 UI 文件，不能作为项目素材再上传工坊。
+通用后端是**实验性功能**，已在独立原生 x64 宿主验证。拦截目标主模块导入的 `USER32!SetCursor`；走这条路线的程序可能可用。自行绘制／隐藏光标、动态获取 API、仅由其他模块设置光标、32 位程序及受保护进程不在当前支持范围内。未宣称所有游戏兼容或通过反作弊认证。
 
-## 常用参数
+通用原样模式复制缩放观察到的 Windows 光标，必要时纠正热点，不保证任意原始 ANI 动画保留。《群星》识别本机九个 CUR/ANI 资源并保留原动画，不打包游戏素材。部分标准抓取、忙碌、禁止光标可保留状态样式；未知自定义光标使用基础样式，不假定友军／敌军含义。
+
+光晕、发光、拖尾、放大镜、原图染色、导入／编辑器、逐光标绑定与自动按应用配置尚未实现。[功能对照](docs/YOLOMOUSE_COMPARISON.md)与[路线图](docs/ROADMAP.md)区分已完成和计划。
+
+无驱动、服务、开机启动、遥测或网络客户端。以目标正常权限运行。预览版尚未签名，请从本项目 Release 下载并核对 SHA256。[安全说明](SECURITY.md)。
+
+## 快捷键与参数
+
+默认 Ctrl+Alt：**C** 设置、**↑/↓** 每次一像素、**0** 恢复、**1/2/3** 预设、**L** 锁定。冲突可勾选“快捷键加 Shift”。滑块支持方向键、Home/End、Page Up/Page Down（8 像素）。
 
 ```text
-StellarisCursor.exe --settings
-StellarisCursor.exe --launch
-StellarisCursor.exe --stop
-StellarisCursor.exe --game-path "D:\SteamLibrary\steamapps\common\Stellaris\stellaris.exe" --settings
-StellarisCursor.exe --data-dir "D:\CursorBridgeData"
-StellarisCursor.exe --game-log "D:\CustomStellarisProfile\logs\game.log"
+CursorBridge.exe
+CursorBridge.exe --app-path "D:\Apps\MyApp.exe" --settings
+CursorBridge.exe --game-path "D:\SteamLibrary\steamapps\common\Stellaris\stellaris.exe" --settings
+CursorBridge.exe --background
+CursorBridge.exe --launch
+CursorBridge.exe --stop
+CursorBridge.exe --data-dir "D:\CursorBridgeData"
 ```
 
-`--launch` 直接运行已识别的游戏，参数为 `-skiploop`；需要启动器流程时仍从 Steam / Paradox Launcher 启动。`--game-log` 用于特殊日志目录，正常的 `-userdir` 会自动识别。切换 DLL 版本前先退出游戏，再更新工具。
+`--app-path` 明确启用通用后端，`--game-path` 要求完整《群星》安装；面板选择自动判断适配类型。只向《群星》传入 `-skiploop`；需要专用启动器的应用继续使用正常入口。
 
-## 开发与验证
+## 工坊与开发
 
-需要 Windows x64、Visual Studio 2022 C++ Build Tools / Windows SDK、CMake 3.21+。Python 3.10+ 用于测试素材和模组工具。没有依赖第三方注入或钩子库。
+工坊包仅含原创脚本和十种语言文本，不替换 UOD／暗蓝 GUI，不覆盖 `00_on_actions.txt`。尚未代为发布工坊项目。[上传指南](docs/WORKSHOP_UPLOAD.md)。第三方设置页 GUI 生成结果仅在本机使用，不在公开包中。
+
+构建需要 Windows x64、VS 2022 C++ Build Tools／Windows SDK、CMake 3.21+、Python 3.10+，无第三方钩子库。开发构建保留历史名 `StellarisCursor.exe`，公开单文件命名 `CursorBridge.exe`。
 
 ```powershell
 cmake -S . -B build -A x64
@@ -67,10 +65,6 @@ ctest --test-dir build -C Release --output-on-failure
 python tools/make_test_assets.py "build/Synthetic Game"
 ```
 
-完整原生测试的启动与等待示例见 [英文 README](README.md#build-and-verify)。自动测试采用原创的 CUR/ANI 素材，布局标记 `stellaris.exe` 不会被执行或注入；注入目标仅限同目录内构建的专用测试宿主。也可用本机合法游戏目录做资源回归，测试仍在独立宿主中进行。
-
-原生套件包含 **40,700 项检查**，覆盖九个资源、96 档尺寸、原样与 12 套主题、热点边界、实际绘制、动画第二帧、无效值、恢复、心跳失效和系统光标保护。另有通讯、本地化、预设、用户目录和安装路径测试。测试范围与未覆盖项目见 [验证记录](docs/VALIDATION.md)。
-
-欢迎参与[后续路线](docs/ROADMAP.md)中的通用游戏适配、样式包和动画管理。提报问题前请移除日志中的个人路径与存档信息。原创代码、脚本、测试素材与项目封面采用 [MIT](LICENSE) 协议；《群星》素材和本机生成的第三方 UI 不在该授权内。
+完整命令见[英文 README](README.md#build-and-verify)。测试只用独立宿主及原创素材，不加载存档或运行布局标记。[验证记录](docs/VALIDATION.md)说明范围。[贡献指南](CONTRIBUTING.md)。原创代码、脚本和素材采用 [MIT](LICENSE)，游戏素材与第三方 GUI 不在授权内。
 
 本项目独立开发，与 Paradox Interactive、Steam 或 YoloMouse 无关联。

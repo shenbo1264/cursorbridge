@@ -1,30 +1,28 @@
-# Frosted glass settings — v0.8
+# Frosted settings — v0.9 preview
 
-## Direction / 设计方向
+The panel borrows Apple's material hierarchy: a frosted outer surface, restrained blue controls and a readable opaque cursor-preview well. This is an independent Windows implementation, not Apple's Liquid Glass renderer. Native edit, trackbar, combo, checkbox and button controls retain keyboard/value/accessibility behavior; GDI+ subclass painting provides rounded surfaces and focus feedback.
 
-The settings window borrows the hierarchy of Apple's materials: a frosted outer surface, a quieter size/preview area, and restrained blue emphasis on the slider, switches and completion action. Text remains dark and readable; the preview uses an opaque well so tiny cursors remain visible. This is an independently implemented Windows interface, not Apple's Liquid Glass renderer.
+## Material implementation
 
-新版采用浅色磨砂背景、细边缘、圆角控件与更清楚的留白。尺寸读数和预览放在最显眼的位置，样式／配色、窗口锁定、个人预设与快捷键按操作顺序排列。玻璃效果服务于层次，文字和预览优先保证清晰。
+- Requests documented Desktop Acrylic through DWM, with the frame extended across the client area and premultiplied-alpha drawing.
+- Windows 11 24H2+ requires `DWMWA_REDIRECTIONBITMAP_ALPHA` (39) to honor the redirection bitmap's alpha. Version 0.9 explicitly requests it; older Windows reject unsupported attributes without preventing launch.
+- A dynamically resolved native `SetWindowCompositionAttribute` accent backdrop supplies a controllable frosted tint. **Accent-policy constants are not a public compatibility contract**; this backend is experimental. Failure retains the documented DWM route. Future Windows updates may require a change.
+- Respects user transparency/high-contrast preferences. Disabled transparency, high contrast or unavailable composition uses an opaque readable surface. No Windows settings are changed. Windows may also apply its own power/inactive fallback.
+- Uses Windows GDI+, DWM, common controls and installed Segoe UI/Microsoft YaHei UI fonts. No desktop screenshots/background-capture blur loop, Apple assets or extra UI framework is installed.
 
-## Implementation
+The header remains draggable, Escape/close dismiss the panel, and the preview is in actual pixels independently of layout scaling. The application selector is now visible near the header. Layout fits the monitor work area; per-monitor DPI transitions need more coverage.
 
-- Windows 11 build 22621 or later: documented `DWMWA_SYSTEMBACKDROP_TYPE` with `DWMSBT_TRANSIENTWINDOW` requests Desktop Acrylic. The DWM frame extends across the client area, and a premultiplied-alpha bitmap preserves the material behind our drawing.
-- Windows 10, unsupported attributes or disabled system transparency: opaque light surface. High contrast requests an opaque surface and uses system foreground/background/accent colors. Windows can also choose its own fallback for power saving or an inactive window. We do not change Windows settings.
-- Native edit, trackbar, combo, auto-checkbox and button controls remain responsible for values, focus and input. Subclass painting adds rounded surfaces, switches, hover/pressed feedback and visible focus outlines. Native edit drawing has its alpha repaired to prevent unreadable pale text over DWM glass.
-- System Segoe UI and Microsoft YaHei UI fonts; no Apple font/assets or additional framework/runtime installation. Windows' built-in GDI+, DWM and common controls provide the rendering.
-- The header can be dragged; the close button and Escape close the panel. Layout fits the current monitor work area. The preview is drawn at actual cursor pixels, independently of the panel's layout scaling.
-- No desktop screenshots are taken by the application, no background blur runs in our own loop, and no new game/mod content is loaded. Only the small open settings window requests the system material. Desktop Acrylic can still cost GPU/power while visible.
+## Verification limits
 
-## Verification and limits
+The v0.8 captures in `docs/images/glass-panel-*.jpg` are **historical**, showing its gray fallback, not evidence for v0.9 transparency. During v0.9 development a colored native test backdrop visibly showed through with blurred boundaries, and numeric/slider updates were exercised. The final material revision was inspected and accepted by the project owner; a complete automated visual matrix was not performed.
 
-Release builds use warnings as errors. A dedicated hidden native-panel test checks 30 cases: edit boundaries and normalization, native slider Home/End/arrow notifications, shape/color changes, disabled colors for the original pointer, toggles, complete preset persistence, restoration, preview cycling, language changes, rendering, close and reopen. It operates only on its own isolated controls and preferences; it does not inject user input or alter desktop settings.
-
-Chinese and English window captures were inspected, including the 1–96 range, complete footer and accessibility control tree. Captures show the inactive solid fallback: Windows intentionally makes background Acrylic solid when the window deactivates. Automated desktop clicking could not activate this panel on the test desktop (`failed to activate captured window`); foreground blur appearance and full mouse/drag interaction with this revision are still pending manual confirmation. A successful DWM request establishes availability, not that Windows displays translucency in every context. Per-monitor DPI transitions, contrast themes and Windows 10 fallback also need visual checks on those configurations.
+The hidden native panel suite now has **32 checks**: value boundaries, normalization, slider keyboard and external-value synchronization, selections, toggles, presets, restoration, preview, language changes, rendering and close/reopen. This verifies our controls, not OS blur. General-application selection/branding was added afterward and builds under warnings-as-errors. Windows 10, contrast themes, power saving, unusual DPI and all activation transitions are not visually certified. A successful API return alone does not prove the displayed material is translucent.
 
 ## Primary references
 
-- [Apple HIG — Materials](https://developer.apple.com/design/human-interface-guidelines/materials): visual hierarchy, legibility and restrained use of glass.
-- [Apple — Adopting Liquid Glass](https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass): appearance and accessibility adaptations.
-- [Microsoft — DWM_SYSTEMBACKDROP_TYPE](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_systembackdrop_type): documented Acrylic selection and OS support.
-- [Microsoft — Custom Window Frame Using DWM](https://learn.microsoft.com/en-us/windows/win32/dwm/customframe): frame extension and alpha handling.
-- [Microsoft — Acrylic material](https://learn.microsoft.com/en-us/windows/apps/design/style/acrylic): inactive, transparency, power-saving and high-contrast fallback; GPU cost.
+- [Apple HIG — Materials](https://developer.apple.com/design/human-interface-guidelines/materials).
+- [Microsoft — DWMWINDOWATTRIBUTE](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute): redirection bitmap alpha and OS support.
+- [Microsoft — DWM_SYSTEMBACKDROP_TYPE](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_systembackdrop_type).
+- [Microsoft — Custom Window Frame](https://learn.microsoft.com/en-us/windows/win32/dwm/customframe).
+- [Microsoft — SetWindowCompositionAttribute](https://learn.microsoft.com/en-us/windows/win32/dwm/setwindowcompositionattribute): dynamically resolved API; Microsoft recommends documented DWM attributes instead.
+- [Microsoft — Acrylic](https://learn.microsoft.com/en-us/windows/apps/design/style/acrylic): OS fallback and GPU cost.

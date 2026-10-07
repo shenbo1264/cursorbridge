@@ -57,14 +57,36 @@ inline bool GlassTransparencyAllowed(){
     RegGetValueW(HKEY_CURRENT_USER,L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",L"EnableTransparency",RRF_RT_REG_DWORD,NULL,&value,&size);
     BOOL composition=FALSE;return value!=0&&!GlassHighContrast()&&SUCCEEDED(DwmIsCompositionEnabled(&composition))&&composition;
 }
+static HRESULT glassAlphaResult=E_NOTIMPL;
+static bool glassAccentActive=false;
 inline bool GlassApplyBackdrop(HWND window){
     // Attribute numbers keep the executable loadable with older Windows SDKs
     // and on Windows 10. Unsupported documented attributes return E_INVALIDARG.
     BOOL dark=FALSE;DwmSetWindowAttribute(window,20,&dark,sizeof(dark));
+    // Windows 11 24H2+ otherwise ignores the alpha of our GDI redirection
+    // bitmap. Older versions reject this documented attribute harmlessly.
     int corner=2;DwmSetWindowAttribute(window,33,&corner,sizeof(corner));
     int backdrop=GlassTransparencyAllowed()?3:1;
     HRESULT result=DwmSetWindowAttribute(window,38,&backdrop,sizeof(backdrop));
     bool active=backdrop==3&&SUCCEEDED(result);MARGINS margins=active?MARGINS{-1,-1,-1,-1}:MARGINS{0,0,0,0};
     if(FAILED(DwmExtendFrameIntoClientArea(window,&margins)))active=false;
+    BOOL alpha=TRUE;glassAlphaResult=DwmSetWindowAttribute(window,39,&alpha,sizeof(alpha));
+    // Desktop Acrylic's inactive fallback can obscure translucency. The native
+    // accent backend gives this transient tool a controllable frosted tint.
+    // These accent-policy constants are not a public compatibility contract:
+    // resolve at runtime, honor OS transparency/contrast, retain DWM fallback.
+    struct AccentPolicy {int state;int flags;DWORD tint;int animation;};
+    struct CompositionData {int attribute;void* data;SIZE_T size;};
+    using SetComposition=BOOL(WINAPI*)(HWND,CompositionData*);
+    auto setComposition=(SetComposition)GetProcAddress(GetModuleHandleW(L"user32.dll"),"SetWindowCompositionAttribute");
+    glassAccentActive=false;
+    if(setComposition){
+        AccentPolicy policy={GlassTransparencyAllowed()?4:0,2,0x01ffffff,0};
+        CompositionData data={19,&policy,sizeof(policy)};
+        if(policy.state){int none=1;DwmSetWindowAttribute(window,38,&none,sizeof(none));}
+        glassAccentActive=setComposition(window,&data)&&policy.state==4;
+        if(!glassAccentActive)DwmSetWindowAttribute(window,38,&backdrop,sizeof(backdrop));
+    }
+    active=active||glassAccentActive;
     return active;
 }

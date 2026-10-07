@@ -17,6 +17,18 @@ inline std::wstring AbsolutePath(const std::wstring& path){
     if(path.empty())return {};std::error_code error;auto absolute=std::filesystem::absolute(std::filesystem::path(path),error);
     return error?std::wstring():absolute.lexically_normal().wstring();
 }
+// Validate a user-selected native executable without running it. Bound all
+// reads; reject DLLs, malformed headers and architectures our hook cannot use.
+inline bool ValidApplicationExecutable(const std::wstring& exe){
+    if(exe.empty()||!std::filesystem::path(exe).is_absolute()||
+       _wcsicmp(std::filesystem::path(exe).extension().c_str(),L".exe"))return false;
+    std::ifstream in(exe,std::ios::binary);if(!in)return false;
+    in.seekg(0,std::ios::end);auto length=in.tellg();in.seekg(0);
+    IMAGE_DOS_HEADER dos={};if(!in.read((char*)&dos,sizeof(dos))||dos.e_magic!=IMAGE_DOS_SIGNATURE||dos.e_lfanew<(LONG)sizeof(dos)||dos.e_lfanew>1048576||length<dos.e_lfanew+(std::streamoff)sizeof(IMAGE_NT_HEADERS64))return false;
+    in.seekg(dos.e_lfanew);IMAGE_NT_HEADERS64 nt={};
+    return in.read((char*)&nt,sizeof(nt))&&nt.Signature==IMAGE_NT_SIGNATURE&&nt.FileHeader.Machine==IMAGE_FILE_MACHINE_AMD64&&
+        (nt.FileHeader.Characteristics&IMAGE_FILE_EXECUTABLE_IMAGE)&&!(nt.FileHeader.Characteristics&IMAGE_FILE_DLL)&&nt.OptionalHeader.Magic==IMAGE_NT_OPTIONAL_HDR64_MAGIC;
+}
 inline bool ValidGameExecutable(const std::wstring& exe){
     if(exe.empty()||!std::filesystem::path(exe).is_absolute()||_wcsicmp(std::filesystem::path(exe).filename().c_str(),L"stellaris.exe")||!FileExists(exe))return false;
     for(int i=0;i<9;i++)if(!FileExists(ResourcePathAt(Parent(exe),i)))return false;

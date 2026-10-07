@@ -1,4 +1,21 @@
-# Validation scope — v0.8.0
+# Validation scope — v0.9.0
+
+## Current release checks
+
+- MSVC Windows x64 Release build, warnings-as-errors: passed.
+- Five CTest groups: passed, including 32 hidden native-panel checks and 16 path checks.
+- Dedicated native host / synthetic Stellaris assets: **40,700 checks, zero failures**.
+- Dedicated generic Win32 x64 host: **34,969 checks, zero failures**. Seven standard/unknown source roles, all 96 sizes and 13 original/theme modes; dimensions, hotspots, pixel/signature equivalence, unchanged sources, pause, invalid input and heartbeat expiry.
+- EXE copied alone into a Unicode/spaced folder: startup and exact-path stop passed; all **109 embedded runtime files** matched the generated manifest's size/SHA256. Target was an explicitly selected never-run copy of our own test EXE, avoiding real application attachment.
+- Workshop scripts/localization and public-file/package guards: required before publication. GitHub Actions reruns native, general and single-file checks for this source/tag.
+
+General tests run in our dedicated host with pointer-context bypass, not a real third-party game. They do not establish universal compatibility, foreground/input behavior for every engine, software-cursor support, anti-cheat approval or long-session stability. The general adapter's foreground/confinement worker shares the existing tested implementation, but new third-party applications require their own testing.
+
+The owner accepted the frosted material revision. Earlier development checks observed a colored backdrop through blurred boundaries; final general-selector interactions were not visually rechecked. Windows 10/contrast/power saving/unusual DPI and every activation transition remain unverified. Historical v0.8 JPGs show its older gray fallback, not v0.9 glass. See [UI details](UI_DESIGN.md).
+
+The ABI is now 3: target mode, single-file runtime and general recognition changed; original theme hotspots were adjusted to keep native 1px rounding inside the image. Restart a connected target before using the new build. No user savegame or mod playset was changed for current release checks.
+
+## Historical v0.8 checks
 
 ## New settings panel
 

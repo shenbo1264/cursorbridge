@@ -68,7 +68,8 @@ def cur(shape, palette, resource, frame=0):
             dibpixels += bytes((rgb[2],rgb[1],rgb[0],255)) if rgb else bytes(4)
             if rgb is None: row[x//8] |= 1<<(7-x%8)
         mask += row
-    hotspot=(2,2) if shape==0 and resource!=5 else (24,24)
+    # 23/48 remains centered while Win32's 1px rounding stays inside the image.
+    hotspot=(2,2) if shape==0 and resource!=5 else (23,23)
     dib=struct.pack('<IiiHHIIiiII',40,SIZE,SIZE*2,1,32,0,len(dibpixels),0,0,0,0)+dibpixels+mask
     return struct.pack('<HHH',0,2,1)+struct.pack('<BBBBHHII',SIZE,SIZE,0,0,*hotspot,len(dib),22)+dib
 

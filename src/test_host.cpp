@@ -46,10 +46,38 @@ static bool RefreshTest(Shared* s) {
     if(GetForegroundWindow()==window){SetCursorPos(pointer.x,pointer.y);if(prior)SetForegroundWindow(prior);}
     DestroyWindow(window);DestroyCursor(original);return focused;
 }
+static int GenericTest(Shared* s,const std::wstring& logs){
+    struct Source {LPCWSTR name;int role;};
+    for(auto source:{Source{IDC_ARROW,0},Source{IDC_HAND,3},Source{IDC_SIZEALL,4},Source{IDC_WAIT,5},Source{IDC_APPSTARTING,5},Source{IDC_NO,6},Source{IDC_CROSS,0}}){
+        HCURSOR original=LoadCursorW(NULL,source.name);Signature before;Check(CursorSignature(original,before),"generic_source_load");
+        for(int theme=0;theme<=12;theme++)for(int size=1;size<=96;size++){
+            InterlockedExchange64(&s->heartbeat,(LONG64)GetTickCount64());
+            InterlockedExchange(&s->theme,theme);InterlockedExchange(&s->size,size);InterlockedExchange(&s->enabled,1);
+            SetCursor(original);HCURSOR actual=GetCursor();Signature after;
+            Check(CursorSignature(actual,after)&&after.w==size&&after.h==size,"generic_requested_dimensions");
+            Check(after.x<(DWORD)size&&after.y<(DWORD)size,"generic_hotspot_bounds");
+            HCURSOR expected=theme?(HCURSOR)LoadImageW(NULL,ThemeResourcePath(Parent(ModulePath()),theme,source.role).c_str(),IMAGE_CURSOR,size,size,LR_LOADFROMFILE):
+                (HCURSOR)CopyImage(original,IMAGE_CURSOR,size,size,0);
+            Signature wanted;bool validExpected=expected&&CursorSignature(expected,wanted);
+            if(!theme){wanted.x=(std::min)(wanted.x,(DWORD)size-1);wanted.y=(std::min)(wanted.y,(DWORD)size-1);}
+            Check(validExpected&&after==wanted,"generic_original_or_theme_artwork");
+            Check(expected&&SameDrawing(actual,expected,0,size),"generic_rendered_pixels");
+            if(expected)DestroyCursor(expected);
+        }
+        InterlockedExchange(&s->enabled,0);SetCursor(original);Check(GetCursor()==original,"generic_pause_restores_original");
+        Signature intact;Check(CursorSignature(original,intact)&&intact==before,"generic_system_source_unchanged");
+    }
+    HCURSOR arrow=LoadCursorW(NULL,IDC_ARROW);
+    InterlockedExchange(&s->enabled,1);InterlockedExchange(&s->size,0);SetCursor(arrow);Check(GetCursor()==arrow,"generic_invalid_size_fails_open");
+    InterlockedExchange(&s->size,24);InterlockedExchange64(&s->heartbeat,(LONG64)(GetTickCount64()-5000));SetCursor(arrow);Check(GetCursor()==arrow,"generic_expired_heartbeat_restores_original");
+    SetCursor(NULL);std::string rows=details.str();if(rows.size()>=2)rows.erase(rows.size()-2,1);
+    std::ofstream output(logs+L"\\selftest-generic.json");output<<"{\"passed\":"<<(failed==0?"true":"false")<<",\"checks\":"<<checks<<",\"failed\":"<<failed<<",\"cases\":[\n"<<rows<<"]}\n";
+    return failed?1:0;
+}
 int wmain(int argc,wchar_t** argv) {
-    bool refresh=false;
-    for(int i=1;i<argc;i++){if(wcscmp(argv[i],L"--game-dir")==0&&i+1<argc)gameDirectory=argv[++i];else if(wcscmp(argv[i],L"--refresh")==0)refresh=true;else return 2;}
-    if(gameDirectory.empty())return 2;
+    bool refresh=false,generic=false;
+    for(int i=1;i<argc;i++){if(wcscmp(argv[i],L"--game-dir")==0&&i+1<argc)gameDirectory=argv[++i];else if(wcscmp(argv[i],L"--refresh")==0)refresh=true;else if(wcscmp(argv[i],L"--generic")==0)generic=true;else return 2;}
+    if(gameDirectory.empty()&&!generic)return 2;
     SetProcessDPIAware();DWORD pid=GetCurrentProcessId();std::wstring logs=Parent(Parent(ModulePath()))+L"\\logs";
     std::filesystem::create_directories(logs);
     HANDLE map=NULL;Shared* s=NULL;
@@ -61,6 +89,7 @@ int wmain(int argc,wchar_t** argv) {
     if(!s)return 2;
     Check(s->magic==CURSOR_MAGIC&&s->pid==pid,"remote_payload_initialized");
     Check(s->hookSlots>0,"SetCursor_IAT_hook_installed");
+    if(generic){int result=GenericTest(s,logs);UnmapViewOfFile(s);CloseHandle(map);return result;}
     if(refresh){RefreshTest(s);std::string rows=details.str();if(rows.size()>=2)rows.erase(rows.size()-2,1);std::ofstream output(logs+L"\\selftest-refresh.json");output<<"{\"passed\":"<<(failed==0?"true":"false")<<",\"checks\":"<<checks<<",\"failed\":"<<failed<<",\"worker_refreshes\":"<<s->reserved<<",\"cases\":[\n"<<rows<<"]}\n";UnmapViewOfFile(s);CloseHandle(map);return failed?1:0;}
     for(int n=0;n<9;n++) {
         HCURSOR original=LoadCursorFromFileW(ResourcePath(n).c_str());Signature before;bool valid=original&&CursorSignature(original,before);

@@ -28,6 +28,8 @@ int wmain(){
     SendMessageW(sizeSlider,WM_KEYDOWN,VK_HOME,0);Expect(desiredSize==1,"native slider Home still applies value");
     SendMessageW(sizeSlider,WM_KEYDOWN,VK_END,0);Expect(desiredSize==96,"native slider End still applies value");
     SendMessageW(sizeSlider,WM_KEYDOWN,VK_LEFT,0);Expect(desiredSize==95,"native slider arrow still applies value");
+    SendMessageW(sizeSlider,TBM_SETPOS,TRUE,37);Expect(desiredSize==37,"external slider value applies preference");
+    Expect(ControlText(sizeEdit)==L"37","external slider value synchronizes numeric edit");
     SendMessageW(shapeCombo,CB_SETCURSEL,3,0);SendMessageW(colorCombo,CB_SETCURSEL,2,0);Command(102,CBN_SELCHANGE);
     Expect(desiredTheme==11,"native style/color selection changes theme");
     SendMessageW(shapeCombo,CB_SETCURSEL,0,0);Command(102,CBN_SELCHANGE);Expect(!IsWindowEnabled(colorCombo),"original cursor disables color");

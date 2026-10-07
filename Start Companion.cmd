@@ -1,2 +1,2 @@
 @echo off
-start "" "%~dp0bin\StellarisCursor.exe"
+start "" "%~dp0bin\StellarisCursor.exe" --background

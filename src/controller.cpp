@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include "glass_style.h"
+#include "embedded_runtime.h"
 
 static HWND windowHandle;
 static HANDLE attached=NULL,mapHandle=NULL;
@@ -24,6 +25,7 @@ static bool enabled=true;
 static std::wstring binDir,logPath;
 static std::wstring gameExe,defaultGameLog,gameLog,configuredGameLog,dataDirectory,settingsPath;
 static bool explicitGameExe=false;
+static bool genericAdapter=false;
 static bool explicitGameLog=false;
 static LanguageMonitor uiLanguage;
 static const wchar_t* Text(UiText key){return UiString(uiLanguage.language,key);}
@@ -43,6 +45,7 @@ static void Log(const std::wstring& text) {
     std::ofstream f(logPath,std::ios::app);SYSTEMTIME t;GetLocalTime(&t);
     f<<t.wHour<<":"<<t.wMinute<<":"<<t.wSecond<<" "<<utf8<<"\n";
 }
+static void ChooseGame();
 #include "settings_panel.h"
 #include "hotkeys.h"
 static void RefreshUiLanguage(){
@@ -104,6 +107,7 @@ static bool Connect(DWORD pid,bool test=false,bool windowTest=false) {
     InterlockedExchange(&s->size,desiredSize);InterlockedExchange(&s->enabled,enabled?1:0);InterlockedExchange64(&s->heartbeat,GetTickCount64());
     InterlockedExchange(&s->theme,desiredTheme);InterlockedExchange(&s->lockWindow,lockWindow?1:0);
     InitArgs args={};args.size=sizeof(args);args.test=test?(windowTest?2U:1U):0U;
+    args.generic=genericAdapter?1U:0U;
     wcsncpy_s(args.targetExe,(test?binDir+L"\\StellarisCursorTest.exe":gameExe).c_str(),_TRUNCATE);
     wcsncpy_s(args.resourceDirectory,gameDirectory.c_str(),_TRUNCATE);
     remote=VirtualAllocEx(h,NULL,sizeof(args),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);
@@ -112,7 +116,7 @@ static bool Connect(DWORD pid,bool test=false,bool windowTest=false) {
     if(called||!written){if(remote)VirtualFreeEx(h,remote,0,MEM_RELEASE);}
     if(!called||exitCode!=1||s->hookSlots<=0){Log(L"连接失败：Initialize 返回="+std::to_wstring(exitCode)+L"，样本="+std::to_wstring(s->mappings)+L"，入口="+std::to_wstring(s->hookSlots));s->enabled=0;UnmapViewOfFile(s);CloseHandle(mapping);CloseHandle(h);return false;}
     attached=h;state=s;mapHandle=mapping;attachedPid=pid;
-    if(!test){
+    if(!test&&!genericAdapter){
         std::wstring profile=ProcessUserDirectory(h);
         if(profile.empty())profile=Parent(Parent(gameLog));
         if(!explicitGameLog)gameLog=profile+L"\\logs\\game.log";
@@ -131,10 +135,12 @@ static DWORD FindGame() {
     HANDLE snap=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);if(snap==INVALID_HANDLE_VALUE)return 0;
     PROCESSENTRY32W entry={};entry.dwSize=sizeof(entry);DWORD pid=0;
     if(Process32FirstW(snap,&entry))do{
-        if(_wcsicmp(entry.szExeFile,L"stellaris.exe"))continue;
+        auto expected=genericAdapter?std::filesystem::path(gameExe).filename().wstring():L"stellaris.exe";
+        if(expected.empty()||_wcsicmp(entry.szExeFile,expected.c_str()))continue;
         HANDLE query=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,FALSE,entry.th32ProcessID);
         wchar_t path[32768]={};DWORD count=32768;
-        bool good=query&&WaitForSingleObject(query,0)==WAIT_TIMEOUT&&QueryFullProcessImageNameW(query,0,path,&count)&&ValidGameExecutable(path);
+        bool good=query&&WaitForSingleObject(query,0)==WAIT_TIMEOUT&&QueryFullProcessImageNameW(query,0,path,&count)&&
+            (genericAdapter?ValidApplicationExecutable(path):ValidGameExecutable(path));
         if(query)CloseHandle(query);
         if(!good||(explicitGameExe&&!SamePath(path,gameExe)))continue;
         gameExe=path;gameDirectory=Parent(gameExe);pid=entry.th32ProcessID;break;
@@ -142,17 +148,20 @@ static DWORD FindGame() {
     CloseHandle(snap);return pid;
 }
 static void ChooseGame(){
-    wchar_t path[32768]={};OPENFILENAMEW dialog={};dialog.lStructSize=sizeof(dialog);dialog.hwndOwner=windowHandle;
-    dialog.lpstrFilter=L"Stellaris (stellaris.exe)\0stellaris.exe\0";dialog.lpstrFile=path;dialog.nMaxFile=32768;
+    wchar_t path[32768]={};OPENFILENAMEW dialog={};dialog.lStructSize=sizeof(dialog);dialog.hwndOwner=panelWindow?panelWindow:windowHandle;
+    dialog.lpstrFilter=L"Windows x64 application (*.exe)\0*.exe\0";dialog.lpstrFile=path;dialog.nMaxFile=32768;
     dialog.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;
     if(!GetOpenFileNameW(&dialog))return;
-    if(!ValidGameExecutable(path)){MessageBoxW(NULL,uiLanguage.language==UiLanguage::Chinese?L"请选择完整安装目录中的 stellaris.exe（需包含 gfx/cursors）。":L"Select stellaris.exe from a complete installation including gfx/cursors.",L"CursorBridge",MB_OK|MB_ICONINFORMATION);return;}
-    if(attached&&!SamePath(path,gameExe)){MessageBoxW(NULL,uiLanguage.language==UiLanguage::Chinese?L"请先退出当前游戏，再切换安装目录。":L"Exit the connected game before switching installations.",L"CursorBridge",MB_OK);return;}
+    if(!ValidApplicationExecutable(path)||SamePath(AbsolutePath(path),ModulePath())){MessageBoxW(NULL,uiLanguage.language==UiLanguage::Chinese?L"请选择使用 Windows 原生光标的 64 位程序。":L"Select a 64-bit application using native Windows cursors.",L"CursorBridge",MB_OK|MB_ICONINFORMATION);return;}
+    if(attached&&!SamePath(path,gameExe)){MessageBoxW(NULL,uiLanguage.language==UiLanguage::Chinese?L"请先关闭已连接的目标程序，再切换目标。":L"Close the connected application before switching targets.",L"CursorBridge",MB_OK);return;}
     gameExe=AbsolutePath(path);gameDirectory=Parent(gameExe);explicitGameExe=true;failedPid=0;
-    WritePrivateProfileStringW(L"Game",L"Executable",gameExe.c_str(),settingsPath.c_str());
+    genericAdapter=!ValidGameExecutable(gameExe);
+    WritePrivateProfileStringW(L"Target",L"Executable",gameExe.c_str(),settingsPath.c_str());
+    uiLanguage.SetSource(genericAdapter?L"":Parent(Parent(gameLog))+L"\\settings.txt");
+    RefreshUiLanguage();if(panelWindow){LocalizePanel();InvalidateRect(panelWindow,NULL,FALSE);}
 }
 static void Tick() {
-    if(attached&&WaitForSingleObject(attached,0)==WAIT_OBJECT_0){Log(L"游戏已退出，释放本地连接。");if(panelWindow)DestroyWindow(panelWindow);Disconnect();gameLog=explicitGameLog?configuredGameLog:defaultGameLog;uiLanguage.SetSource(Parent(Parent(gameLog))+L"\\settings.txt");failedPid=0;}
+    if(attached&&WaitForSingleObject(attached,0)==WAIT_OBJECT_0){Log(L"游戏已退出，释放本地连接。");if(panelWindow)DestroyWindow(panelWindow);Disconnect();gameLog=explicitGameLog?configuredGameLog:defaultGameLog;uiLanguage.SetSource(genericAdapter?L"":Parent(Parent(gameLog))+L"\\settings.txt");failedPid=0;}
     if(!attached){DWORD pid=FindGame();if(pid&&pid!=failedPid){if(!Connect(pid))failedPid=pid;}}
     PublishPreferences();
     RefreshUiLanguage();
@@ -160,7 +169,7 @@ static void Tick() {
     wcsncpy_s(tray.szTip,label.c_str(),_TRUNCATE);Shell_NotifyIconW(NIM_MODIFY,&tray);
 }
 static void BridgeTick() {
-    if(!attached||!state||WaitForSingleObject(attached,0)!=WAIT_TIMEOUT)return;
+    if(genericAdapter||!attached||!state||WaitForSingleObject(attached,0)!=WAIT_TIMEOUT)return;
     bridge.Poll([](const BridgeCommand& command){
         if(command.kind==BridgeKind::Settings){OpenSettings();return;}
         if(command.kind==BridgeKind::Size){if(desiredSize==command.size&&enabled)return;desiredSize=command.size;enabled=true;SaveSize();Log(L"游戏内按钮："+std::to_wstring(desiredSize)+L" 像素。");}
@@ -169,13 +178,15 @@ static void BridgeTick() {
     });
 }
 static void LaunchGame(){
-    if(FindGame())return;if(!ValidGameExecutable(gameExe))ChooseGame();
-    if(ValidGameExecutable(gameExe))ShellExecuteW(NULL,L"open",gameExe.c_str(),L"-skiploop",gameDirectory.c_str(),SW_SHOWNORMAL);
+    if(FindGame())return;if(!(genericAdapter?ValidApplicationExecutable(gameExe):ValidGameExecutable(gameExe)))ChooseGame();
+    if(genericAdapter?ValidApplicationExecutable(gameExe):ValidGameExecutable(gameExe))ShellExecuteW(NULL,L"open",gameExe.c_str(),genericAdapter?NULL:L"-skiploop",gameDirectory.c_str(),SW_SHOWNORMAL);
 }
 static void Menu() {
     RefreshUiLanguage();
-    HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,1,Text(UiText::Launch));
-    AppendMenuW(menu,MF_STRING,5,Text(UiText::Slider));
+    HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,5,Text(UiText::Slider));
+    auto targetName=std::filesystem::path(gameExe).filename().wstring();
+    std::wstring launchLabel=std::wstring(Text(UiText::Launch))+(targetName.empty()?L"":L" · "+targetName);
+    AppendMenuW(menu,MF_STRING,1,launchLabel.c_str());
     AppendMenuW(menu,MF_STRING,6,Text(UiText::ChooseGame));
     AppendMenuW(menu,MF_STRING,2,Text(enabled?UiText::Pause:UiText::Enable));
     for(int i=0;i<4;i++){int size=IndexSize(i);AppendMenuW(menu,MF_STRING|(size==desiredSize?MF_CHECKED:0),10+i,(std::to_wstring(size)+Text(UiText::Pixel)).c_str());}
@@ -202,7 +213,7 @@ static LRESULT CALLBACK Procedure(HWND h,UINT m,WPARAM w,LPARAM l) {
 }
 static int SelfTest(bool windowTest=false) {
     std::wstring host=binDir+L"\\StellarisCursorTest.exe";
-    std::wstring cmd=L"\""+host+L"\" --game-dir \""+gameDirectory+L"\""+(windowTest?L" --refresh":L"");STARTUPINFOW startup={};startup.cb=sizeof(startup);PROCESS_INFORMATION pi={};
+    std::wstring cmd=L"\""+host+L"\""+(genericAdapter?L" --generic":L" --game-dir \""+gameDirectory+L"\"")+(windowTest?L" --refresh":L"");STARTUPINFOW startup={};startup.cb=sizeof(startup);PROCESS_INFORMATION pi={};
     if(!CreateProcessW(host.c_str(),&cmd[0],NULL,NULL,FALSE,CREATE_NO_WINDOW,NULL,binDir.c_str(),&startup,&pi))return 2;
     bool ok=Connect(pi.dwProcessId,true,windowTest);DWORD exitCode=99;
     if(ok){for(int i=0;i<3000;i++){InterlockedExchange64(&state->heartbeat,GetTickCount64());if(WaitForSingleObject(pi.hProcess,100)==WAIT_OBJECT_0)break;}GetExitCodeProcess(pi.hProcess,&exitCode);}
@@ -218,22 +229,29 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,wchar_t*,int) {
         std::wstring option=args[i];
         if(option==L"--game-log"&&i+1<argCount){configuredGameLog=gameLog=AbsolutePath(args[++i]);explicitGameLog=true;}
         else if(option==L"--game-path"&&i+1<argCount){gameExe=AbsolutePath(args[++i]);explicitGameExe=true;}
+        else if(option==L"--app-path"&&i+1<argCount){gameExe=AbsolutePath(args[++i]);explicitGameExe=true;genericAdapter=true;}
         else if(option==L"--data-dir"&&i+1<argCount)dataDirectory=AbsolutePath(args[++i]);
         else if(option==L"--launch")launch=true;
         else if(option==L"--settings")showSettings=true;
         else if(option==L"--stop")stop=true;
         else if(option==L"--self-test")selfTest=true;
+        else if(option==L"--self-test-generic"){selfTest=true;genericAdapter=true;}
+        else if(option==L"--background")showSettings=false;
         else if(option==L"--self-test-window"){selfTest=true;windowTest=true;}
         else {LocalFree(args);return 2;}
-    }LocalFree(args);
+    }LocalFree(args);if(argCount==1)showSettings=true;
     if(dataDirectory.empty())return 2;
     std::error_code error;std::filesystem::create_directories(dataDirectory+L"\\logs",error);if(error)return 2;
     logPath=dataDirectory+L"\\logs\\controller.log";settingsPath=dataDirectory+L"\\settings.ini";
-    if(!explicitGameExe){wchar_t saved[32768]={};GetPrivateProfileStringW(L"Game",L"Executable",L"",saved,32768,settingsPath.c_str());if(ValidGameExecutable(saved)){gameExe=saved;explicitGameExe=true;}else gameExe=DiscoverInstalledGame();}
-    if(explicitGameExe&&!ValidGameExecutable(gameExe)){Log(L"Invalid Stellaris installation. Check --game-path.");return 2;}
+    if(!explicitGameExe&&!selfTest){wchar_t saved[32768]={};GetPrivateProfileStringW(L"Target",L"Executable",L"",saved,32768,settingsPath.c_str());
+        if(ValidApplicationExecutable(saved)){gameExe=saved;explicitGameExe=true;genericAdapter=!ValidGameExecutable(gameExe);}
+        else {GetPrivateProfileStringW(L"Game",L"Executable",L"",saved,32768,settingsPath.c_str());if(ValidGameExecutable(saved)){gameExe=saved;explicitGameExe=true;}else gameExe=DiscoverInstalledGame();}}
+    if(gameExe.empty()&&!selfTest)genericAdapter=true;
+    if(explicitGameExe&&genericAdapter&&(!ValidApplicationExecutable(gameExe)||SamePath(gameExe,ModulePath()))){Log(L"Invalid Windows x64 target application. Check --app-path.");return 2;}
+    if(explicitGameExe&&!genericAdapter&&!ValidGameExecutable(gameExe)){Log(L"Invalid Stellaris installation. Check --game-path.");return 2;}
     gameDirectory=Parent(gameExe);
-    uiLanguage.SetSource(Parent(Parent(gameLog))+L"\\settings.txt");
-    if(selfTest){if(!ValidGameExecutable(gameExe))return 2;return SelfTest(windowTest);}
+    uiLanguage.SetSource(genericAdapter?L"":Parent(Parent(gameLog))+L"\\settings.txt");
+    if(selfTest){if(genericAdapter){gameDirectory=binDir;}else if(!ValidGameExecutable(gameExe))return 2;return SelfTest(windowTest);}
     if(stop){
         HWND existing=FindWindowW(L"StellarisCursorController",NULL);DWORD pid=0;GetWindowThreadProcessId(existing,&pid);
         HANDLE process=pid?OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,FALSE,pid):NULL;
@@ -245,13 +263,22 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,wchar_t*,int) {
         if(process)CloseHandle(process);return stopped?0:1;
     }
     HANDLE single=CreateMutexW(NULL,TRUE,L"Local\\StellarisCursorToolController");if(GetLastError()==ERROR_ALREADY_EXISTS){if(launch)PostMessageW(FindWindowW(L"StellarisCursorController",NULL),WM_APP+3,0,0);if(showSettings)PostMessageW(FindWindowW(L"StellarisCursorController",NULL),WM_APP+4,0,0);CloseHandle(single);return 0;}
+#ifdef CURSORBRIDGE_STANDALONE
+    auto runtime=PrepareEmbeddedRuntime();
+    if(runtime.empty()){
+        Log(L"Could not prepare the embedded runtime cache.");
+        MessageBoxW(NULL,uiLanguage.language==UiLanguage::Chinese?L"无法准备内置组件。请检查本机用户目录是否可写，或查看日志。":L"Could not prepare embedded components. Check your local user folder or the log.",L"CursorBridge",MB_OK|MB_ICONERROR);
+        CloseHandle(single);return 1;
+    }
+    binDir=runtime;Log(L"Verified embedded runtime ready: "+runtime);
+#endif
     CursorPreset preferences=ReadPreset(settingsPath,L"Cursor");desiredSize=preferences.size;desiredTheme=preferences.theme;lockWindow=preferences.lock;
     hotkeyModifiers=ReadHotkeyModifiers(settingsPath);
     INITCOMMONCONTROLSEX controls={sizeof(controls),ICC_BAR_CLASSES};InitCommonControlsEx(&controls);
     WNDCLASSW wc={};wc.lpfnWndProc=Procedure;wc.hInstance=instance;wc.lpszClassName=L"StellarisCursorController";RegisterClassW(&wc);
     windowHandle=CreateWindowExW(0,wc.lpszClassName,Text(UiText::WindowTitle),0,0,0,0,0,NULL,NULL,instance,NULL);
     tray.cbSize=sizeof(tray);tray.hWnd=windowHandle;tray.uID=1;tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP;tray.uCallbackMessage=WM_APP+1;tray.hIcon=LoadIconW(NULL,IDI_APPLICATION);wcsncpy_s(tray.szTip,Text(UiText::TrayWaiting),_TRUNCATE);Shell_NotifyIconW(NIM_ADD,&tray);
-    SetTimer(windowHandle,1,1000,NULL);SetTimer(windowHandle,2,200,NULL);Tick();Log(L"CursorBridge started; validating the Stellaris executable and cursor resources before attaching.");
+    SetTimer(windowHandle,1,1000,NULL);SetTimer(windowHandle,2,200,NULL);Tick();Log(genericAdapter?L"CursorBridge started with the opt-in Windows x64 native-cursor adapter.":L"CursorBridge started with the Stellaris adapter.");
     if(launch)LaunchGame();
     if(showSettings)OpenSettings();
     MSG msg;while(GetMessageW(&msg,NULL,0,0)>0){if(panelWindow&&IsDialogMessageW(panelWindow,&msg))continue;TranslateMessage(&msg);DispatchMessageW(&msg);}CloseHandle(single);return 0;

@@ -11,7 +11,7 @@ static HFONT panelNumberFont=NULL;
 static bool panelGlass=false,panelContrast=false;
 static const int PanelWidth=640,PanelHeight=738;
 static COLORREF PanelFg(){return panelContrast?GetSysColor(COLOR_WINDOWTEXT):RGB(29,36,49);}
-static COLORREF PanelMuted(){return panelContrast?GetSysColor(COLOR_WINDOWTEXT):RGB(92,102,117);}
+static COLORREF PanelMuted(){return panelContrast?GetSysColor(COLOR_WINDOWTEXT):RGB(43,55,70);}
 static COLORREF PanelAccent(){return panelContrast?GetSysColor(COLOR_HIGHLIGHT):RGB(0,105,219);}
 static COLORREF PanelSurface(){return panelContrast?GetSysColor(COLOR_WINDOW):RGB(250,251,253);}
 static bool PanelChinese(){return uiLanguage.language==UiLanguage::Chinese;}
@@ -58,7 +58,8 @@ static void PanelPreview(){
         if(base)DestroyCursor(base);if(variant)DestroyCursor(variant);
     }
     std::wstring asset=theme?ThemeResourcePath(binDir,theme,resource):ResourcePath(resource);
-    HCURSOR next=(HCURSOR)LoadImageW(NULL,asset.c_str(),IMAGE_CURSOR,size,size,LR_LOADFROMFILE);
+    HCURSOR next=genericAdapter&&!theme?ResizeNativeCursor(LoadCursorW(NULL,IDC_ARROW),size):
+        (HCURSOR)LoadImageW(NULL,asset.c_str(),IMAGE_CURSOR,size,size,LR_LOADFROMFILE);
     if(!next){if(panelCursor){DestroyCursor(panelCursor);panelCursor=NULL;}panelCursorTheme=-1;return;}
     if(GetCursor()==panelCursor)SetCursor(LoadCursorW(NULL,IDC_ARROW));
     if(panelCursor)DestroyCursor(panelCursor);panelCursor=next;panelCursorSize=size;panelCursorTheme=theme;panelCursorResource=previewResource;
@@ -83,7 +84,6 @@ static void PaintPanel(HWND h){
     else g.Clear(GlassColor(panelContrast?GetSysColor(COLOR_WINDOW):RGB(238,241,247)));
     GlassRound(g,PanelRect(1,1,639,737),(float)P(20),Gdiplus::Color(0,0,0,0),Gdiplus::Color(140,255,255,255),(float)P(1));
     PanelText(g,L"CursorBridge",PanelRect(28,17,520,51),25,PanelFg(),false,false);
-    PanelText(g,PanelLabel(L"群星 · 光标设置",L"Stellaris · Cursor settings"),PanelRect(28,53,580,78),13,PanelMuted());
     GlassRound(g,PanelRect(20,96,620,282),(float)P(18),GlassColor(PanelSurface(),panelGlass?225:255),GlassColor(RGB(255,255,255)));
     PanelText(g,enabled?PanelLabel(L"光标尺寸",L"Cursor size"):Text(UiText::Restored),PanelRect(40,108,376,136),13,PanelMuted());
     GlassRound(g,PanelRect(38,142,130,190),(float)P(10),GlassColor(PanelSurface()),GlassColor(GetFocus()==sizeEdit?PanelAccent():RGB(207,214,224)),(float)P(1));
@@ -173,6 +173,7 @@ static LRESULT CALLBACK PanelControlProcedure(HWND h,UINT m,WPARAM w,LPARAM l,UI
     if(m==WM_MOUSEMOVE){TRACKMOUSEEVENT track={sizeof(track),TME_LEAVE,h,0};TrackMouseEvent(&track);InvalidateRect(h,NULL,FALSE);}
     if(m==WM_MOUSELEAVE||m==WM_SETFOCUS||m==WM_KILLFOCUS||m==WM_ENABLE)InvalidateRect(h,NULL,FALSE);
     LRESULT result=DefSubclassProc(h,m,w,l);
+    if(h==sizeSlider&&m==TBM_SETPOS&&!panelSyncing)ApplySize((int)SendMessageW(h,TBM_GETPOS,0,0),true);
     if(m==WM_LBUTTONDOWN||m==WM_LBUTTONUP||m==WM_KEYDOWN||m==WM_KEYUP||m==BM_SETCHECK||m==BM_SETSTATE||m==CB_SETCURSEL||m==WM_SETTEXT)InvalidateRect(h,NULL,FALSE);
     return result;
 }
@@ -185,6 +186,8 @@ static HWND PanelControl(const wchar_t* cls,const wchar_t* label,DWORD style,int
 }
 static void LocalizePanel(){
     if(!panelWindow)return;panelSyncing=true;
+    auto target=std::filesystem::path(gameExe).filename().wstring();
+    SetWindowTextW(GetDlgItem(panelWindow,134),(std::wstring(Text(UiText::ChooseGame))+(target.empty()?L"":L" · "+target)).c_str());
     SendMessageW(shapeCombo,CB_RESETCONTENT,0,0);SendMessageW(colorCombo,CB_RESETCONTENT,0,0);
     for(UiText label:{UiText::Original,UiText::Arrow,UiText::Cross,UiText::Ring})SendMessageW(shapeCombo,CB_ADDSTRING,0,(LPARAM)Text(label));
     for(UiText label:{UiText::White,UiText::Cyan,UiText::Amber,UiText::Pink})SendMessageW(colorCombo,CB_ADDSTRING,0,(LPARAM)Text(label));
@@ -210,6 +213,7 @@ static LRESULT CALLBACK PanelProcedure(HWND h,UINT m,WPARAM w,LPARAM l){
     if(m==WM_NCHITTEST){POINT point={GET_X_LPARAM(l),GET_Y_LPARAM(l)};ScreenToClient(h,&point);if(point.y<P(85)&&point.x<P(578))return HTCAPTION;}
     if(m==WM_ERASEBKGND)return 1;
     if(m==WM_PAINT){PaintPanel(h);return 0;}
+    if(m==WM_ACTIVATE)RefreshPanelMaterial();
     if(m==WM_SETTINGCHANGE||m==WM_THEMECHANGED||m==WM_DWMCOMPOSITIONCHANGED){RefreshPanelMaterial();return 0;}
     if(m==WM_CTLCOLORSTATIC||m==WM_CTLCOLOREDIT||m==WM_CTLCOLORLISTBOX){HDC dc=(HDC)w;SetTextColor(dc,PanelFg());SetBkColor(dc,PanelSurface());return (LRESULT)panelBackground;}
     if(m==WM_HSCROLL&&(HWND)l==sizeSlider){ApplySize((int)SendMessageW(sizeSlider,TBM_GETPOS,0,0),true);return 0;}
@@ -217,6 +221,7 @@ static LRESULT CALLBACK PanelProcedure(HWND h,UINT m,WPARAM w,LPARAM l){
     if(m==WM_COMMAND){
         if(panelSyncing)return 0;int id=LOWORD(w),notification=HIWORD(w);
         if(id==IDCANCEL){CloseSettings();return 0;}
+        if(id==134&&notification==BN_CLICKED){ChooseGame();return 0;}
         if(id==100&&notification==EN_CHANGE){
             wchar_t value[16]={};GetWindowTextW(sizeEdit,value,16);wchar_t* end=NULL;long size=wcstol(value,&end,10);
             if(*value&&end&&!*end&&ValidCursorSize((int)size))ApplySize((int)size,true);
@@ -259,6 +264,7 @@ static void OpenSettings(bool show=true){
     RefreshPanelMaterial();
     panelFont=CreateFontW(-P(13),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Microsoft YaHei UI");
     panelNumberFont=CreateFontW(-P(30),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+    PanelControl(L"BUTTON",L"",BS_PUSHBUTTON,134,28,53,550,26);
     sizeEdit=PanelControl(L"EDIT",L"",ES_NUMBER|ES_AUTOHSCROLL|ES_CENTER,100,42,146,84,40);SendMessageW(sizeEdit,EM_SETLIMITTEXT,2,0);SendMessageW(sizeEdit,WM_SETFONT,(WPARAM)panelNumberFont,TRUE);
     sizeSlider=PanelControl(TRACKBAR_CLASSW,L"",TBS_HORZ|TBS_NOTICKS|TBS_FIXEDLENGTH,101,30,198,358,40);SendMessageW(sizeSlider,TBM_SETTHUMBLENGTH,P(24),0);SendMessageW(sizeSlider,TBM_SETRANGE,TRUE,MAKELPARAM(1,96));SendMessageW(sizeSlider,TBM_SETPAGESIZE,0,8);
     PanelControl(L"BUTTON",L"",BS_PUSHBUTTON,106,408,106,202,170);
@@ -272,7 +278,8 @@ static void OpenSettings(bool show=true){
     PanelControl(L"BUTTON",L"×",BS_PUSHBUTTON,133,584,24,28,28);
     panelNotice.clear();LocalizePanel();
     if(show){ShowWindow(panelWindow,SW_SHOW);UpdateWindow(panelWindow);SetForegroundWindow(panelWindow);SetFocus(sizeSlider);}
-    Log(panelGlass?L"Opened glass settings with native Desktop Acrylic.":L"Opened glass settings with opaque accessibility/compatibility fallback.");
+    Log(panelGlass?(glassAccentActive?L"Opened glass settings with native frosted accent backdrop.":L"Opened glass settings with native Desktop Acrylic."):L"Opened glass settings with opaque accessibility/compatibility fallback.");
+    Log(L"Window alpha channel request HRESULT="+std::to_wstring((unsigned long)glassAlphaResult));
 }
 static void PanelTick(){
     if(!panelWindow)return;HWND foreground=GetForegroundWindow();DWORD pid=0;GetWindowThreadProcessId(foreground,&pid);

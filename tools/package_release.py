@@ -10,7 +10,7 @@ import tempfile
 from make_themes import generate
 
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='0.8.0'
+VERSION='0.9.0'
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -19,9 +19,9 @@ def main():
     build=args.build_dir.resolve()
     out=ROOT/'dist';out.mkdir(exist_ok=True)
     subprocess.run(['python',str(ROOT/'tools/validate_workshop.py')],check=True)
-    documents=['README.md','README.zh-CN.md','LICENSE','SECURITY.md','docs/ARCHITECTURE.md','docs/ROADMAP.md','docs/VALIDATION.md','docs/YOLOMOUSE_COMPARISON.md','docs/UI_DESIGN.md','docs/WORKSHOP_UPLOAD.md','docs/WORKSHOP_DESCRIPTION.zh.bbcode','docs/WORKSHOP_DESCRIPTION.en.bbcode']
+    documents=['README.md','README.zh-CN.md','LICENSE','SECURITY.md','docs/ARCHITECTURE.md','docs/ROADMAP.md','docs/VALIDATION.md','docs/YOLOMOUSE_COMPARISON.md','docs/UI_DESIGN.md','docs/RELEASE_NOTES_v0.9.0.md','docs/WORKSHOP_UPLOAD.md','docs/WORKSHOP_DESCRIPTION.zh.bbcode','docs/WORKSHOP_DESCRIPTION.en.bbcode']
     images=[p.relative_to(ROOT).as_posix() for p in sorted(p for p in (ROOT/'docs/images').iterdir() if p.suffix in {'.png','.jpg'})]
-    launchers=['Open Settings.cmd','Start Companion.cmd','Launch Stellaris.cmd','Stop Companion.cmd']
+    launchers=['Open Settings.cmd','Start Companion.cmd','Launch Target.cmd','Stop Companion.cmd']
     toolkit=['tools/create_settings_patch.py']
     binaries=['StellarisCursor.exe','StellarisCursorHook.dll']
     entries={name:(ROOT/name).read_bytes() for name in documents+images+launchers+toolkit}
@@ -53,13 +53,16 @@ def main():
             for spelling in (str(private),private.as_posix()):
                 for encoding in ('utf-8','utf-16le'):
                     assert spelling.encode(encoding) not in data,(name,'private build path')
-    manifest={'version':VERSION,'platform':'Windows x64','game_adapter':'Stellaris 4.5.1','companion_required':True,'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),'files':{name:hashlib.sha256(data).hexdigest() for name,data in sorted(entries.items())}}
+    manifest={'version':VERSION,'platform':'Windows x64','adapters':['Stellaris 4.5.1','Win32 x64 experimental'],'companion_required':True,'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),'files':{name:hashlib.sha256(data).hexdigest() for name,data in sorted(entries.items())}}
     entries['manifest.json']=json.dumps(manifest,ensure_ascii=False,indent=2).encode('utf-8')
     packages={
-        'CursorBridge-Stellaris-windows-x64.zip':entries,
+        'CursorBridge-windows-x64.zip':entries,
         'CursorBridge-Stellaris-workshop-upload.zip':{name.removeprefix('workshop/'):data for name,data in mod.items()},
     }
-    checksums=[]
+    standalone=out/'CursorBridge.exe'
+    standalone.write_bytes(entries['bin/StellarisCursor.exe'])
+    checksums=[f'{hashlib.sha256(standalone.read_bytes()).hexdigest()}  CursorBridge.exe\n']
+    print(f'CursorBridge.exe: {standalone.stat().st_size} bytes; single-file distribution')
     for filename,content in packages.items():
         path=out/filename
         with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as archive:

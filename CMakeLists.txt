@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(CursorBridge VERSION 0.8.0 LANGUAGES CXX)
+project(CursorBridge VERSION 0.9.0 LANGUAGES CXX RC)
 if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
   message(FATAL_ERROR "CursorBridge currently requires Windows x64")
 endif()
@@ -24,6 +24,17 @@ add_custom_target(CursorThemes ALL
   BYPRODUCTS "${CMAKE_BINARY_DIR}/bin/assets/themes/1/normal.cur"
   COMMENT "Generating original semantic cursor themes")
 add_dependencies(StellarisCursor CursorThemes)
+set(EMBEDDED_DIR "${CMAKE_BINARY_DIR}/embedded")
+add_custom_command(OUTPUT "${EMBEDDED_DIR}/runtime.rc" "${EMBEDDED_DIR}/runtime_manifest.h"
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/embed_runtime.py"
+    --dll "$<TARGET_FILE:StellarisCursorHook>" --themes "${CMAKE_BINARY_DIR}/bin/assets/themes" --output "${EMBEDDED_DIR}"
+  DEPENDS StellarisCursorHook CursorThemes "${CMAKE_SOURCE_DIR}/tools/embed_runtime.py" "${CMAKE_SOURCE_DIR}/tools/make_themes.py"
+  COMMENT "Embedding verified original runtime for single-file launch")
+add_custom_target(EmbeddedRuntime DEPENDS "${EMBEDDED_DIR}/runtime.rc" "${EMBEDDED_DIR}/runtime_manifest.h")
+add_dependencies(StellarisCursor EmbeddedRuntime)
+target_sources(StellarisCursor PRIVATE "${EMBEDDED_DIR}/runtime.rc")
+target_include_directories(StellarisCursor PRIVATE "${EMBEDDED_DIR}")
+target_compile_definitions(StellarisCursor PRIVATE CURSORBRIDGE_STANDALONE)
 add_executable(StellarisCursorTest src/test_host.cpp)
 target_link_libraries(StellarisCursorTest PRIVATE user32 gdi32)
 add_executable(StellarisCursorBridgeTest src/bridge_test.cpp)

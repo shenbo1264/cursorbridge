@@ -32,6 +32,15 @@ jobs:
           if (-not $report.passed -or $report.checks -ne 40700) { throw 'Native test result is incomplete' }
       - name: Validate public mod
         run: python tools/validate_workshop.py
+      - name: General Win32 adapter regression
+        shell: pwsh
+        run: |
+          $process = Start-Process 'build\bin\StellarisCursor.exe' -ArgumentList '--self-test-generic' -PassThru -WindowStyle Hidden -Wait
+          if ($process.ExitCode -ne 0) { throw 'General adapter test failed' }
+          $report = Get-Content 'build\logs\selftest-generic.json' -Raw | ConvertFrom-Json
+          if (-not $report.passed -or $report.checks -ne 34969) { throw 'General adapter result incomplete' }
+      - name: EXE-only launch and embedded runtime
+        run: python tools/verify_standalone.py --build-dir build
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cursorbridge-windows-test-evidence
