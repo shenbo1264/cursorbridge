@@ -24,6 +24,11 @@ int wmain(){
     failedPid=0;hotkeyError=false;enabled=true;uiLanguage.language=UiLanguage::Chinese;
     Expect(panelWindow!=NULL,"panel created");if(!panelWindow)return 1;
     Expect(!IsWindowVisible(panelWindow),"test panel stays hidden");
+    SyncLaunchButton();Expect(ControlText(GetDlgItem(panelWindow,135))==L"启动并连接游戏","Chinese game-launch action");
+    connecting=true;SyncLaunchButton();Expect(!IsWindowEnabled(GetDlgItem(panelWindow,135))&&!IsWindowEnabled(GetDlgItem(panelWindow,134)),"connection in progress disables duplicate actions and target switching");
+    connecting=false;launchDeadline=GetTickCount64()+30000;SyncLaunchButton();Expect(ControlText(GetDlgItem(panelWindow,135))==L"正在启动…"&&!IsWindowEnabled(GetDlgItem(panelWindow,135)),"launch pending state is visible and non-repeatable");
+    launchDeadline=0;foundTargetPid=42;SyncLaunchButton();Expect(ControlText(GetDlgItem(panelWindow,135))==L"连接游戏"&&IsWindowEnabled(GetDlgItem(panelWindow,135)),"running target gets a connection action");
+    foundTargetPid=0;SyncLaunchButton();
     Expect(ControlText(sizeEdit)==L"24","initial numeric value");
     Expect(SendMessageW(sizeSlider,TBM_GETRANGEMIN,0,0)==1&&SendMessageW(sizeSlider,TBM_GETRANGEMAX,0,0)==96,"full slider range");
     SetWindowTextW(sizeEdit,L"1");Expect(desiredSize==1,"lower endpoint accepts native edit notification");
@@ -47,13 +52,15 @@ int wmain(){
     Command(131);Expect(!enabled,"restore disables override");
     int previousPreview=previewResource;Command(106);Expect(previewResource==(previousPreview+1)%9,"preview accessible button cycles state");
     uiLanguage.language=UiLanguage::English;LocalizePanel();Expect(ControlText(GetDlgItem(panelWindow,132))==L"Done","English action label");
+    Expect(ControlText(GetDlgItem(panelWindow,135))==L"Launch game","English game-launch action");
+    genericAdapter=true;SyncLaunchButton();Expect(ControlText(GetDlgItem(panelWindow,135))==L"Launch & connect","general target keeps application wording");genericAdapter=false;
     Expect(ControlText(shiftCheck)==L"Add Shift to hotkeys","English toggle label");
     Expect(SendMessageW(shapeCombo,CB_GETCURSEL,0,0)==2,"language change retains style selection");
     uiLanguage.language=UiLanguage::Chinese;LocalizePanel();Expect(ControlText(GetDlgItem(panelWindow,132))==L"完成","Chinese action label");
     CursorPreset saved=ReadPreset(settingsPath,L"Cursor");Expect(saved.size==32&&saved.theme==7&&saved.lock,"preference persistence survives UI refresh");
     // Paint all controls in their own window DC: catches renderer/subclass
     // recursion and invalid resources without pretending to test system blur.
-    for(int id:{100,101,102,103,104,105,106,111,121,132,133}){SendMessageW(GetDlgItem(panelWindow,id),WM_PAINT,0,0);}
+    for(int id:{100,101,102,103,104,105,106,111,121,132,133,135}){SendMessageW(GetDlgItem(panelWindow,id),WM_PAINT,0,0);}
     SendMessageW(panelWindow,WM_PAINT,0,0);Expect(IsWindow(panelWindow)!=FALSE,"native rendering completes");
     Command(133);Expect(panelWindow==NULL,"close action releases panel");
     OpenSettings(false);Expect(panelWindow!=NULL&&ControlText(sizeEdit)==L"32","reopen keeps selected size");CloseSettings();

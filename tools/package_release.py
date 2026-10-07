@@ -10,7 +10,7 @@ import tempfile
 from make_themes import generate
 
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='0.9.1'
+VERSION='0.9.2'
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -19,7 +19,7 @@ def main():
     build=args.build_dir.resolve()
     out=ROOT/'dist';out.mkdir(exist_ok=True)
     subprocess.run(['python',str(ROOT/'tools/validate_workshop.py')],check=True)
-    documents=['README.md','README.zh-CN.md','LICENSE','SECURITY.md','docs/ARCHITECTURE.md','docs/ROADMAP.md','docs/VALIDATION.md','docs/YOLOMOUSE_COMPARISON.md','docs/UI_DESIGN.md','docs/RELEASE_NOTES_v0.9.1.md','docs/WORKSHOP_UPLOAD.md','docs/WORKSHOP_DESCRIPTION.zh.bbcode','docs/WORKSHOP_DESCRIPTION.en.bbcode']
+    documents=['README.md','README.zh-CN.md','LICENSE','SECURITY.md','docs/ARCHITECTURE.md','docs/ROADMAP.md','docs/VALIDATION.md','docs/YOLOMOUSE_COMPARISON.md','docs/UI_DESIGN.md','docs/RELEASE_NOTES_v0.9.2.md','docs/WORKSHOP_UPLOAD.md','docs/WORKSHOP_DESCRIPTION.zh.bbcode','docs/WORKSHOP_DESCRIPTION.en.bbcode']
     images=[p.relative_to(ROOT).as_posix() for p in sorted(p for p in (ROOT/'docs/images').iterdir() if p.suffix in {'.png','.jpg'})]
     launchers=['Open Settings.cmd','Start Companion.cmd','Launch Target.cmd','Stop Companion.cmd']
     toolkit=['tools/create_settings_patch.py']

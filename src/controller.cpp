@@ -17,6 +17,9 @@ static HWND windowHandle;
 static HANDLE attached=NULL,mapHandle=NULL;
 static Shared* state=NULL;
 static DWORD attachedPid=0,failedPid=0;
+static DWORD foundTargetPid=0;
+static bool targetProbeFailed=false,connecting=false;
+static ULONGLONG launchDeadline=0;
 static int desiredSize=32;
 static int desiredTheme=0;
 static bool lockWindow=false;
@@ -46,6 +49,7 @@ static void Log(const std::wstring& text) {
     f<<t.wHour<<":"<<t.wMinute<<":"<<t.wSecond<<" "<<utf8<<"\n";
 }
 static void ChooseGame();
+static void StartOrConnect();
 #include "settings_panel.h"
 #include "hotkeys.h"
 static void RefreshUiLanguage(){
@@ -132,22 +136,26 @@ static void Disconnect() {
     if(mapHandle){CloseHandle(mapHandle);mapHandle=NULL;}if(attached){CloseHandle(attached);attached=NULL;}attachedPid=0;
 }
 static DWORD FindGame() {
-    HANDLE snap=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);if(snap==INVALID_HANDLE_VALUE)return 0;
+    targetProbeFailed=false;
+    HANDLE snap=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);if(snap==INVALID_HANDLE_VALUE){targetProbeFailed=true;return 0;}
     PROCESSENTRY32W entry={};entry.dwSize=sizeof(entry);DWORD pid=0;
     if(Process32FirstW(snap,&entry))do{
         auto expected=genericAdapter?std::filesystem::path(gameExe).filename().wstring():L"stellaris.exe";
         if(expected.empty()||_wcsicmp(entry.szExeFile,expected.c_str()))continue;
         HANDLE query=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,FALSE,entry.th32ProcessID);
         wchar_t path[32768]={};DWORD count=32768;
-        bool good=query&&WaitForSingleObject(query,0)==WAIT_TIMEOUT&&QueryFullProcessImageNameW(query,0,path,&count)&&
+        bool readable=query&&QueryFullProcessImageNameW(query,0,path,&count);
+        if(!readable)targetProbeFailed=true;
+        bool good=readable&&WaitForSingleObject(query,0)==WAIT_TIMEOUT&&
             (genericAdapter?ValidApplicationExecutable(path):ValidGameExecutable(path));
         if(query)CloseHandle(query);
         if(!good||(explicitGameExe&&!SamePath(path,gameExe)))continue;
-        gameExe=path;gameDirectory=Parent(gameExe);pid=entry.th32ProcessID;break;
+        gameExe=path;gameDirectory=Parent(gameExe);pid=entry.th32ProcessID;targetProbeFailed=false;break;
     }while(Process32NextW(snap,&entry));
     CloseHandle(snap);return pid;
 }
 static void ChooseGame(){
+    if(connecting||launchDeadline)return;
     wchar_t path[32768]={};OPENFILENAMEW dialog={};dialog.lStructSize=sizeof(dialog);dialog.hwndOwner=panelWindow?panelWindow:windowHandle;
     dialog.lpstrFilter=L"Windows x64 application (*.exe)\0*.exe\0";dialog.lpstrFile=path;dialog.nMaxFile=32768;
     dialog.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;
@@ -161,10 +169,15 @@ static void ChooseGame(){
     RefreshUiLanguage();if(panelWindow){LocalizePanel();InvalidateRect(panelWindow,NULL,FALSE);}
 }
 static void Tick() {
-    if(attached&&WaitForSingleObject(attached,0)==WAIT_OBJECT_0){Log(L"游戏已退出，释放本地连接。");if(panelWindow)DestroyWindow(panelWindow);Disconnect();gameLog=explicitGameLog?configuredGameLog:defaultGameLog;uiLanguage.SetSource(genericAdapter?L"":Parent(Parent(gameLog))+L"\\settings.txt");failedPid=0;}
-    if(!attached){DWORD pid=FindGame();if(pid&&pid!=failedPid){if(!Connect(pid))failedPid=pid;}}
+    if(attached&&WaitForSingleObject(attached,0)==WAIT_OBJECT_0){Log(L"目标已退出，释放本地连接。");Disconnect();gameLog=explicitGameLog?configuredGameLog:defaultGameLog;uiLanguage.SetSource(genericAdapter?L"":Parent(Parent(gameLog))+L"\\settings.txt");failedPid=0;}
+    foundTargetPid=attached?attachedPid:FindGame();
+    if(!foundTargetPid)failedPid=0;
+    if(!attached&&foundTargetPid&&foundTargetPid!=failedPid){if(!Connect(foundTargetPid))failedPid=foundTargetPid;else {failedPid=0;panelNotice.clear();}}
+    if(foundTargetPid)launchDeadline=0;
+    else if(launchDeadline&&GetTickCount64()>=launchDeadline){launchDeadline=0;panelNotice=PanelLabel(L"未检测到目标，请检查启动器后重试",L"Target not found; check its launcher and retry");}
     PublishPreferences();
     RefreshUiLanguage();
+    SyncLaunchButton();
     std::wstring label=attached?std::wstring(Text(UiText::TrayTitle))+std::to_wstring(desiredSize)+L" px "+Text(enabled?UiText::On:UiText::Off):Text(UiText::TrayWaiting);
     wcsncpy_s(tray.szTip,label.c_str(),_TRUNCATE);Shell_NotifyIconW(NIM_MODIFY,&tray);
 }
@@ -177,10 +190,33 @@ static void BridgeTick() {
         PublishPreferences();SyncPanel();
     });
 }
-static void LaunchGame(){
-    if(FindGame())return;if(!(genericAdapter?ValidApplicationExecutable(gameExe):ValidGameExecutable(gameExe)))ChooseGame();
-    if(genericAdapter?ValidApplicationExecutable(gameExe):ValidGameExecutable(gameExe))ShellExecuteW(NULL,L"open",gameExe.c_str(),genericAdapter?NULL:L"-skiploop",gameDirectory.c_str(),SW_SHOWNORMAL);
+static void StartOrConnect(){
+    if(connecting||launchDeadline)return;
+    panelNotice.clear();
+    if(attached&&WaitForSingleObject(attached,0)==WAIT_OBJECT_0)Tick();
+    if(attached){enabled=true;PublishPreferences();SyncPanel();return;}
+    foundTargetPid=FindGame();
+    if(foundTargetPid){
+        failedPid=0;connecting=true;SyncLaunchButton();if(panelWindow)UpdateWindow(panelWindow);
+        bool connected=Connect(foundTargetPid);connecting=false;
+        if(connected){enabled=true;PublishPreferences();}else failedPid=foundTargetPid;
+        SyncPanel();return;
+    }
+    if(targetProbeFailed){panelNotice=PanelLabel(L"无法确认同名程序的路径，请检查目标权限后重试",L"Cannot verify a matching process path; check target permissions and retry");SyncPanel();return;}
+    if(!(genericAdapter?ValidApplicationExecutable(gameExe):ValidGameExecutable(gameExe))){
+        ChooseGame();if(genericAdapter?ValidApplicationExecutable(gameExe):ValidGameExecutable(gameExe))StartOrConnect();return;
+    }
+    launchDeadline=GetTickCount64()+30000;failedPid=0;SyncLaunchButton();if(panelWindow)UpdateWindow(panelWindow);
+    SHELLEXECUTEINFOW request={};request.cbSize=sizeof(request);request.fMask=SEE_MASK_NOCLOSEPROCESS;
+    request.hwnd=panelWindow;request.lpVerb=L"open";request.lpFile=gameExe.c_str();request.lpParameters=genericAdapter?NULL:L"-skiploop";request.lpDirectory=gameDirectory.c_str();request.nShow=SW_SHOWNORMAL;
+    if(!ShellExecuteExW(&request)){
+        DWORD error=GetLastError();launchDeadline=0;
+        panelNotice=std::wstring(PanelLabel(L"启动失败，错误码 ",L"Launch failed, error "))+std::to_wstring(error);
+        Log(panelNotice);
+    }else {enabled=true;Log(L"已请求启动目标；等待进程出现后自动连接。");}
+    if(request.hProcess)CloseHandle(request.hProcess);SyncPanel();
 }
+static void LaunchGame(){StartOrConnect();}
 static void Menu() {
     RefreshUiLanguage();
     HMENU menu=CreatePopupMenu();AppendMenuW(menu,MF_STRING,5,Text(UiText::Slider));

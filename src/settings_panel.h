@@ -16,12 +16,30 @@ static COLORREF PanelAccent(){return panelContrast?GetSysColor(COLOR_HIGHLIGHT):
 static COLORREF PanelSurface(){return panelContrast?GetSysColor(COLOR_WINDOW):RGB(250,251,253);}
 static bool PanelChinese(){return uiLanguage.language==UiLanguage::Chinese;}
 static const wchar_t* PanelLabel(const wchar_t* cn,const wchar_t* en){return PanelChinese()?cn:en;}
+static const wchar_t* LaunchButtonLabel(){
+    if(connecting)return PanelLabel(L"正在连接…",L"Connecting…");
+    if(attached)return enabled?PanelLabel(L"已连接",L"Connected"):PanelLabel(L"启用光标调整",L"Enable adjustment");
+    if(launchDeadline)return PanelLabel(L"正在启动…",L"Starting…");
+    if(foundTargetPid)return genericAdapter?PanelLabel(L"连接程序",L"Connect app"):PanelLabel(L"连接游戏",L"Connect game");
+    return genericAdapter?PanelLabel(L"启动并连接",L"Launch & connect"):PanelLabel(L"启动并连接游戏",L"Launch game");
+}
+static void SyncLaunchButton(){
+    if(!panelWindow)return;HWND button=GetDlgItem(panelWindow,135);if(!button)return;
+    wchar_t current[128]={};GetWindowTextW(button,current,128);
+    const wchar_t* label=LaunchButtonLabel();bool active=!connecting&&!launchDeadline&&(!attached||!enabled);
+    HWND chooser=GetDlgItem(panelWindow,134);bool canChoose=!connecting&&!launchDeadline;
+    if((IsWindowEnabled(chooser)!=FALSE)!=canChoose)EnableWindow(chooser,canChoose);
+    if(wcscmp(current,label)){SetWindowTextW(button,label);InvalidateRect(panelWindow,NULL,FALSE);}
+    if((IsWindowEnabled(button)!=FALSE)!=active)EnableWindow(button,active);
+}
 static std::wstring PanelStatus(){
     std::wstring status;
-    if(attached){
+    if(connecting)status=PanelLabel(L"正在连接目标进程…",L"Connecting to target process…");
+    else if(attached){
         status=enabled?std::wstring(PanelLabel(L"已连接 · ",L"Connected · "))+std::to_wstring(desiredSize)+PanelLabel(L" px · 切回目标生效",L" px · Return to target"):
             PanelLabel(L"已连接 · 调整已暂停 · 拖动滑块启用",L"Connected · Paused · Move slider to enable");
-    }else status=failedPid?PanelLabel(L"连接失败 · 请从托盘重新尝试连接",L"Connection failed · Retry from tray"):Text(UiText::Waiting);
+    }else if(launchDeadline)status=PanelLabel(L"正在启动目标 · 进程出现后自动连接",L"Starting target · Automatic connection follows");
+    else status=failedPid?PanelLabel(L"连接失败 · 点击上方连接按钮重试",L"Connection failed · Use Connect above to retry"):Text(UiText::Waiting);
     // A shortcut warning or saved-preset notice must not hide connection/pause state.
     if(hotkeyError)status+=PanelLabel(L" · 快捷键冲突",L" · Hotkey conflict");
     if(!panelNotice.empty())status+=L" · "+panelNotice;
@@ -42,6 +60,7 @@ static void CloseSettings(){
 }
 static void SyncPanel(){
     if(!panelWindow||panelSyncing)return;panelSyncing=true;
+    SyncLaunchButton();
     if(GetFocus()!=sizeEdit)SetWindowTextW(sizeEdit,std::to_wstring(desiredSize).c_str());
     SendMessageW(sizeSlider,TBM_SETPOS,TRUE,desiredSize);
     SendMessageW(shapeCombo,CB_SETCURSEL,ThemeShape(desiredTheme),0);
@@ -160,12 +179,12 @@ static void PaintPanelControl(HWND child){
         PanelText(g,title,RECT{P(4),0,r.right-P(62),r.bottom},13,text);
         if(focus)GlassRound(g,inset,(float)P(8),Gdiplus::Color(0,0,0,0),GlassColor(PanelAccent()),(float)P(2));
     }else{
-        bool primary=id==132;
-        COLORREF surface=primary?PanelAccent():pressed?RGB(220,230,243):hover?RGB(232,239,248):RGB(255,255,255);
+        bool primary=id==132||id==135;
+        COLORREF surface=!active?RGB(230,234,241):primary?PanelAccent():pressed?RGB(220,230,243):hover?RGB(232,239,248):RGB(255,255,255);
         if(panelContrast)surface=primary?GetSysColor(COLOR_HIGHLIGHT):GetSysColor(COLOR_WINDOW);
         GlassRound(g,inset,(float)P(id==133?13:10),GlassColor(surface),GlassColor(focus?PanelAccent():RGB(209,217,229)),(float)P(focus?2:1));
         wchar_t title[256]={};GetWindowTextW(child,title,256);
-        PanelText(g,title,inset,id==133?18:13,primary?(panelContrast?GetSysColor(COLOR_HIGHLIGHTTEXT):RGB(255,255,255)):text,true,primary);
+        PanelText(g,title,inset,id==133?18:13,primary&&active?(panelContrast?GetSysColor(COLOR_HIGHLIGHTTEXT):RGB(255,255,255)):text,true,primary);
     }
     canvas.Present();EndPaint(child,&ps);
 }
@@ -233,6 +252,7 @@ static LRESULT CALLBACK PanelProcedure(HWND h,UINT m,WPARAM w,LPARAM l){
         if(panelSyncing)return 0;int id=LOWORD(w),notification=HIWORD(w);
         if(id==IDCANCEL){CloseSettings();return 0;}
         if(id==134&&notification==BN_CLICKED){ChooseGame();return 0;}
+        if(id==135&&notification==BN_CLICKED){StartOrConnect();return 0;}
         if(id==100&&notification==EN_CHANGE){
             wchar_t value[16]={};GetWindowTextW(sizeEdit,value,16);wchar_t* end=NULL;long size=wcstol(value,&end,10);
             if(*value&&end&&!*end&&ValidCursorSize((int)size))ApplySize((int)size,true);
@@ -275,7 +295,8 @@ static void OpenSettings(bool show=true){
     RefreshPanelMaterial();
     panelFont=CreateFontW(-P(13),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Microsoft YaHei UI");
     panelNumberFont=CreateFontW(-P(30),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH,L"Segoe UI");
-    PanelControl(L"BUTTON",L"",BS_PUSHBUTTON,134,28,53,550,26);
+    PanelControl(L"BUTTON",L"",BS_PUSHBUTTON,134,28,53,392,32);
+    PanelControl(L"BUTTON",L"",BS_PUSHBUTTON,135,432,53,180,32);
     sizeEdit=PanelControl(L"EDIT",L"",ES_NUMBER|ES_AUTOHSCROLL|ES_CENTER,100,42,146,84,40);SendMessageW(sizeEdit,EM_SETLIMITTEXT,2,0);SendMessageW(sizeEdit,WM_SETFONT,(WPARAM)panelNumberFont,TRUE);
     sizeSlider=PanelControl(TRACKBAR_CLASSW,L"",TBS_HORZ|TBS_NOTICKS|TBS_FIXEDLENGTH,101,30,198,358,40);SendMessageW(sizeSlider,TBM_SETTHUMBLENGTH,P(24),0);SendMessageW(sizeSlider,TBM_SETRANGE,TRUE,MAKELPARAM(1,96));SendMessageW(sizeSlider,TBM_SETPAGESIZE,0,8);
     PanelControl(L"BUTTON",L"",BS_PUSHBUTTON,106,408,106,202,170);

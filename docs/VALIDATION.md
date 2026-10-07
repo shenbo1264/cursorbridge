@@ -1,4 +1,11 @@
-# Validation scope — v0.9.1
+# Validation scope — v0.9.2
+
+## v0.9.2 launch/connect button
+
+- Six local CTest groups passed: 42 native-panel checks and 12 real connection checks in addition to the existing regression groups.
+- The new settings button launched only our unique temporary x64 fixture, the timer connected it and published 13px, and an already running fixture with a previously failed PID connected through the same button. Paused adjustment resumed; exact-path process enumeration verified no duplicate instances. The desktop cursor resource was unchanged, and the settings panel remained after fixture exit.
+- Native controls cover Chinese/English labels, generic application wording, starting/connecting disabled states and prevention of target switching during a pending operation.
+- The actual Chinese panel was visually inspected: the new button fits beside the target selector, and the current user preference is retained. No live third-party game was launched for this change; the hook and ABI remain the v0.9.1 baseline.
 
 ## v0.9.1 status and live-target verification
 
