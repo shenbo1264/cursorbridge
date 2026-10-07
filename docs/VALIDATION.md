@@ -1,4 +1,15 @@
-# Validation scope — v0.7.0
+# Validation scope — v0.8.0
+
+## New settings panel
+
+- Windows x64 Release build with warnings as errors: passed.
+- Five local CTest groups: passed, including **30 native-panel checks** for boundary values, slider keyboard notifications, selections, toggles, presets, restoration, preview, language changes, rendering and close/reopen.
+- Chinese and English captures inspected: all controls and bottom actions visible, native value/checkbox/combo accessibility tree present. Desktop Acrylic request succeeded on the Windows 11 test host.
+- The screenshots show the inactive solid fallback. Desktop input automation returned `failed to activate captured window`, so this revision's active blur and full mouse/drag interaction are **not manually verified**. Windows 10, high contrast and unusual DPI configurations require separate visual checks. Details: [UI design](UI_DESIGN.md).
+- Cursor hook, shared ABI, game adapter and Workshop scripts are unchanged, except the Workshop descriptor version. Existing v0.7 checks below are retained as historical evidence, not relabeled as new manual testing. Source CI reruns the synthetic native suite for this tag.
+
+## Existing cursor/adapter baseline — v0.7
+
 
 | Check | Result | What it establishes |
 | --- | --- | --- |

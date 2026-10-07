@@ -1,13 +1,14 @@
 # CursorBridge
 
-[简体中文](README.zh-CN.md) · [Download Windows x64](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.7.0) · [Roadmap](docs/ROADMAP.md)
+[简体中文](README.zh-CN.md) · [Download Windows x64](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.8.0) · [Roadmap](docs/ROADMAP.md)
 
 An open-source project for making game cursors easier to see and customize. **The first working adapter is for Stellaris on Windows x64.** Built-in original themes are available; other games, user-imported packs and an editor are future work.
 
 ![CursorBridge: 1–96 px, Windows x64, companion app required](docs/images/cover.png)
 
-## What works in v0.7.0
+## What works in v0.8.0
 
+- **Frosted glass settings** with a clearer size readout, rounded controls, switches and a focused preview. Windows 11 uses native Desktop Acrylic; unsupported systems or disabled transparency use a readable opaque surface. See [design and UI verification scope](docs/UI_DESIGN.md).
 - A **1–96 pixel** keyboard-accessible slider and exact size input. 1 px is an extreme option; start with 24–32 px. 96 px is available for accessibility and demonstrations.
 - **12 original cursor sets**: contrast arrow, crosshair or ring × white, cyan, amber or pink. Friendly/attack/blocked state colors, grab states and native busy/movement animation are included. In 4.5.1, normal/selected/dragselect are identical source pointers and share the basic shape.
 - Three saved presets (size, theme, confinement), game-scoped shortcuts and optional foreground-only window confinement. See [controls and feature comparison](docs/YOLOMOUSE_COMPARISON.md).
@@ -20,11 +21,11 @@ An open-source project for making game cursors easier to see and customize. **Th
 
 This is an early release, verified against **Stellaris 4.5.1 on Windows x64**. There is no Linux/macOS build, universal-game support or multiplayer certification.
 
-![English slider](docs/images/panel-en.png)
+![English frosted settings, inactive fallback](docs/images/glass-panel-en.jpg)
 
 ## Download and start
 
-1. Open the [v0.7.0 Release page](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.7.0) and download `CursorBridge-Stellaris-windows-x64.zip` from Assets. The automatically generated “Source code” archives are for developers.
+1. Open the [v0.8.0 Release page](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.8.0) and download `CursorBridge-Stellaris-windows-x64.zip` from Assets. The automatically generated “Source code” archives are for developers.
 2. Extract the entire ZIP to a folder you control. Keep `bin/StellarisCursor.exe`, `bin/StellarisCursorHook.dll` and `bin/assets/themes/` together. No installer or Python is needed for the companion.
 3. Run `Open Settings.cmd` or `bin/StellarisCursor.exe --settings`.
 4. Start Stellaris normally through Steam / its launcher. The tool connects automatically and shows its status in the tray and panel. Use the slider, close the panel and play.

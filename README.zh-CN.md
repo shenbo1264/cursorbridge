@@ -1,6 +1,6 @@
 # CursorBridge
 
-[English](README.md) · [下载 Windows x64 程序](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.7.0) · [后续路线](docs/ROADMAP.md)
+[English](README.md) · [下载 Windows x64 程序](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.8.0) · [后续路线](docs/ROADMAP.md)
 
 一个让游戏光标更容易看清、也更容易调整的开源项目。**目前已实现的是《群星》的 Windows x64 版本**，已有原创样式与配色；其他游戏、用户导入的样式包与编辑器仍在规划中。
 
@@ -8,6 +8,7 @@
 
 ## 当前功能
 
+- **浅色磨砂玻璃设置面板**：大尺寸读数、圆角控件、开关和独立预览。Windows 11 使用原生 Desktop Acrylic；系统关闭透明或不支持时使用清晰的实色背景。[设计依据与验收范围](docs/UI_DESIGN.md)。
 - **1–96 像素滑块与精确数字输入**，支持方向键、Home/End、Page Up/Down 和 Tab 导航。建议先用 24–32 px；1 px 是极限选项，96 px 可用于大光标需求或演示。
 - **12 套原创光标**：高对比箭头、十字准星、圆环 × 白、青、琥珀、粉四色。友军、攻击和禁止移动使用独立状态色，并有抓取状态、忙碌旋转动画与移动脉冲动画。4.5.1 的普通／选中／框选原图完全一致，因此这三个状态共用基础指针。
 - **3 个个人预设、游戏内快捷键与可选窗口锁定**；预设保存尺寸、样式和锁定状态。快捷键与对标范围见[功能对照](docs/YOLOMOUSE_COMPARISON.md)。
@@ -20,11 +21,11 @@
 
 这是首个公开测试版本，已针对 **Windows x64 /《群星》4.5.1** 验证。尚未支持 Linux、macOS、任意游戏或经过验证的多人联机。
 
-![中文实时滑块](docs/images/panel-zh.png)
+![中文磨砂设置面板，未激活时的实色回退](docs/images/glass-panel-zh.jpg)
 
 ## 下载与使用
 
-1. 打开 [v0.7.0 Release 页面](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.7.0)，在 Assets 下载 `CursorBridge-Stellaris-windows-x64.zip`。自动生成的 Source code 压缩包供开发者使用。
+1. 打开 [v0.8.0 Release 页面](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.8.0)，在 Assets 下载 `CursorBridge-Stellaris-windows-x64.zip`。自动生成的 Source code 压缩包供开发者使用。
 2. 完整解压到自己有写入权限的目录，保留 `bin/StellarisCursor.exe`、`bin/StellarisCursorHook.dll` 与 `bin/assets/themes/` 的相对位置。配套程序无需安装器或 Python。
 3. 双击 `Open Settings.cmd`，或运行 `bin/StellarisCursor.exe --settings`。
 4. 正常通过 Steam / 启动器进入游戏，程序会自动连接。拖动滑块，关闭面板后继续游戏。

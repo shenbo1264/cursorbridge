@@ -10,6 +10,7 @@
 #include <shellapi.h>
 #include <fstream>
 #include <sstream>
+#include "glass_style.h"
 
 static HWND windowHandle;
 static HANDLE attached=NULL,mapHandle=NULL;
