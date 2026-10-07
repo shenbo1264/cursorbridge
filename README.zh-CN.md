@@ -1,12 +1,12 @@
 # CursorBridge
 
-[English](README.md) · [直接下载 EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.0/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.0)
+[English](README.md) · [直接下载 EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.1/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.1)
 
 **MIT 开源的 Windows x64 光标调整工具。** 选择目标程序，调整大小、样式和颜色，保存预设并使用快捷键。从《群星》起步，v0.9 增加实验性通用 Win32 后端，保留《群星》专属适配。方向是 YoloMouse 同类的开源工具，目前尚未实现完整功能对等。
 
 ## 下载与使用
 
-1. 下载 **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.0/CursorBridge.exe)**，双击打开设置。无需安装器、手动解压、Python 或单独下载 DLL。
+1. 下载 **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.1/CursorBridge.exe)**，双击打开设置。无需安装器、手动解压、Python 或单独下载 DLL。
 2. 点击设置页上方或托盘中的 **选择目标程序…**，选中实际运行的 **64 位程序 EXE**。正常启动它，或点击 **启动目标程序**。
 3. 调节大小、样式与颜色，回到目标使用。目标在前台、鼠标位于客户区时才应用调整。
 4. 从面板恢复、托盘暂停或退出。更新前关闭目标程序：已加载的钩子驻留到目标退出。
@@ -15,7 +15,13 @@ EXE 内置钩子及 108 个原创光标文件，首次运行在 `%LOCALAPPDATA%/
 
 未指定目标时，已有用户保留 Steam／正在运行的《群星》发现。选择完整《群星》安装使用专属后端，其他有效 x64 EXE 使用通用后端。仅连接所选完整路径，不向所有前台应用自动加载钩子。
 
-## v0.9.0 预览版
+## 调整后游戏里没有变化？
+
+调整光标**无需安装工坊模组**。检查面板底部是否显示“已连接”：等待表示目标尚未运行或路径不符，失败可从托盘重新尝试连接。显示“调整已暂停”时，拖动滑块或选择尺寸会重新启用。然后点击“完成”或切回目标，鼠标放在游戏画面内；面板里的预览不代表游戏当前已连接。
+
+快捷键冲突仅影响对应快捷键，可以继续使用面板；也可勾选“快捷键加 Shift”。v0.9.1 始终保留连接、暂停和尺寸信息，避免冲突提示遮住状态。
+
+## v0.9.1 预览版
 
 - 双击单文件启动，界面与托盘通用文案，可明确选择目标程序。
 - 透明磨砂设置、原生控件、键盘焦点和实际像素预览。遵守系统透明／高对比设置，不支持时用实色背景。[材质与限制](docs/UI_DESIGN.md)。

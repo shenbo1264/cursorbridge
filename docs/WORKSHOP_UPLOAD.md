@@ -9,7 +9,7 @@
 
 Recommended Workshop title: **CursorBridge｜群星光标大小 · 1–96 px**. Put “requires companion app” prominently in the opening paragraph and preview image. Categories: Utilities / Graphics, subject to the launcher's available tags. Supported script version: `4.5.*`; tested executable: 4.5.1. Do not claim a pure-subscription solution or universal compatibility.
 
-The primary download link is the actual tagged [GitHub Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.0). The direct EXE URL is `https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.0/CursorBridge.exe`. Use both in the description: the page contains notes/checksums and the EXE link goes straight to the program. Do not use a `releases/latest` link while the release is marked prerelease; GitHub's latest endpoint may skip it.
+The primary download link is the actual tagged [GitHub Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.1). The direct EXE URL is `https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.1/CursorBridge.exe`. Use both in the description: the page contains notes/checksums and the EXE link goes straight to the program. Do not use a `releases/latest` link while the release is marked prerelease; GitHub's latest endpoint may skip it.
 
 ## Upload-ready text / 可直接粘贴的简介
 

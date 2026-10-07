@@ -16,6 +16,17 @@ static COLORREF PanelAccent(){return panelContrast?GetSysColor(COLOR_HIGHLIGHT):
 static COLORREF PanelSurface(){return panelContrast?GetSysColor(COLOR_WINDOW):RGB(250,251,253);}
 static bool PanelChinese(){return uiLanguage.language==UiLanguage::Chinese;}
 static const wchar_t* PanelLabel(const wchar_t* cn,const wchar_t* en){return PanelChinese()?cn:en;}
+static std::wstring PanelStatus(){
+    std::wstring status;
+    if(attached){
+        status=enabled?std::wstring(PanelLabel(L"已连接 · ",L"Connected · "))+std::to_wstring(desiredSize)+PanelLabel(L" px · 切回目标生效",L" px · Return to target"):
+            PanelLabel(L"已连接 · 调整已暂停 · 拖动滑块启用",L"Connected · Paused · Move slider to enable");
+    }else status=failedPid?PanelLabel(L"连接失败 · 请从托盘重新尝试连接",L"Connection failed · Retry from tray"):Text(UiText::Waiting);
+    // A shortcut warning or saved-preset notice must not hide connection/pause state.
+    if(hotkeyError)status+=PanelLabel(L" · 快捷键冲突",L" · Hotkey conflict");
+    if(!panelNotice.empty())status+=L" · "+panelNotice;
+    return status;
+}
 static int P(int value){return MulDiv(value,(int)panelDpi,96);}
 static RECT PanelRect(int left,int top,int right,int bottom){return {P(left),P(top),P(right),P(bottom)};}
 static void CloseSettings(){
@@ -99,7 +110,7 @@ static void PaintPanel(HWND h){
     PanelText(g,keys,PanelRect(28,558,612,584),12,PanelMuted());
     PanelText(g,keys2,PanelRect(28,584,612,610),12,PanelMuted());
     PanelLine(g,651);
-    std::wstring status=panelNotice.empty()?Text(hotkeyError?UiText::KeyError:attached?UiText::Connected:UiText::Waiting):panelNotice;
+    std::wstring status=PanelStatus();
     PanelText(g,status,PanelRect(28,658,612,681),11,hotkeyError?RGB(176,49,44):PanelMuted());
     canvas.Present();EndPaint(h,&ps);
 }

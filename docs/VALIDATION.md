@@ -1,6 +1,13 @@
-# Validation scope — v0.9.0
+# Validation scope — v0.9.1
 
-## Current release checks
+## v0.9.1 status and live-target verification
+
+- All five local CTest groups passed; native-panel checks increased from 32 to 36. Active connection and size remain visible during a shortcut conflict; Chinese and English paused states and failed connections are covered.
+- In the installed Stellaris 4.5.2 main menu, the 48px source cursor changed to 24px then 13px through the companion panel. Read-only GetCursorInfo/GetIconInfo observations matched the corresponding resized game resources, including dimensions and bitmap hashes.
+- The updated controller reconnected to that game and applied 13px after returning from the panel. The 13px preference was written to the normal settings file. The test game was exited from its main menu; no save was opened and no playset was edited.
+- This patch does not change the hook DLL or ABI. These checks do not establish new generic-game compatibility or long-session stability.
+
+## v0.9.0 hook and packaging baseline
 
 - MSVC Windows x64 Release build, warnings-as-errors: passed.
 - Five CTest groups: passed, including 32 hidden native-panel checks and 16 path checks.

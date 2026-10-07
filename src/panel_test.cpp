@@ -16,6 +16,12 @@ int wmain(){
     if(!std::filesystem::create_directory(fixture))return 2;settingsPath=(fixture/L"settings.ini").wstring();logPath=(fixture/L"test.log").wstring();
     binDir=Parent(ModulePath());desiredSize=24;desiredTheme=6;lockWindow=false;enabled=true;
     uiLanguage.language=UiLanguage::Chinese;OpenSettings(false);
+    attached=(HANDLE)1;hotkeyError=true;
+    Expect(PanelStatus().find(L"已连接")!=std::wstring::npos&&PanelStatus().find(L"24 px")!=std::wstring::npos,"shortcut warning retains connection and applied size");
+    enabled=false;Expect(PanelStatus().find(L"调整已暂停")!=std::wstring::npos,"paused connection explains re-enabling adjustment");
+    uiLanguage.language=UiLanguage::English;Expect(PanelStatus().find(L"Paused")!=std::wstring::npos,"English pause status");
+    attached=NULL;failedPid=42;Expect(PanelStatus().find(L"Connection failed")!=std::wstring::npos,"failure is distinct from waiting");
+    failedPid=0;hotkeyError=false;enabled=true;uiLanguage.language=UiLanguage::Chinese;
     Expect(panelWindow!=NULL,"panel created");if(!panelWindow)return 1;
     Expect(!IsWindowVisible(panelWindow),"test panel stays hidden");
     Expect(ControlText(sizeEdit)==L"24","initial numeric value");

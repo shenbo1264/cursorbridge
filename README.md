@@ -1,12 +1,12 @@
 # CursorBridge
 
-[简体中文](README.zh-CN.md) · [Download EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.0/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.0)
+[简体中文](README.zh-CN.md) · [Download EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.1/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.1)
 
 **An independent MIT-licensed Windows x64 cursor customization tool.** Select a target application, resize its cursor and switch original themes without changing Windows desktop preferences. Started with Stellaris, v0.9 adds an **experimental general Win32 adapter** alongside the dedicated Stellaris adapter. The goal is a tool in the same category as YoloMouse; full feature parity is not claimed.
 
 ## Download and run
 
-1. Download **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.0/CursorBridge.exe)** and double-click. No installer, manual extraction, Python or separate DLL download is needed.
+1. Download **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.1/CursorBridge.exe)** and double-click. No installer, manual extraction, Python or separate DLL download is needed.
 2. Click **Select target application…** in settings or the tray. Select the actual **64-bit application executable**. Start it normally or use **Launch target app**.
 3. Set size/style/color, then return to the target. Changes apply while it is foreground and the pointer is over its client area.
 4. Restore/pause or exit through the tray. The hook remains resident until the target exits; close the target before updating the tool.
@@ -15,7 +15,13 @@ The EXE embeds our hook and 108 original theme files. First launch prepares a ve
 
 Existing users retain Steam/running-Stellaris discovery when no target is selected. A complete Stellaris installation uses its resource-aware adapter; another native x64 EXE uses the general adapter. Only the selected complete path is eligible, not every foreground application.
 
-## v0.9.0 preview
+## No change inside the target?
+
+**No Workshop mod is required to resize Stellaris cursors.** Check the footer: waiting means the selected target has not been found; a failed connection can be retried from the tray. If paused, moving the slider or selecting a size re-enables adjustment. Click Done or return to the target and move the pointer into its client area. The panel preview alone does not prove a connection.
+
+A hotkey conflict only affects those shortcuts; the panel still works, and Add Shift can avoid a collision. In v0.9.1, that warning no longer hides connection, pause or size status.
+
+## v0.9.1 preview
 
 - Single-file launch, general interface/tray wording and explicit application selection.
 - Frosted settings, native controls, keyboard focus and actual-pixel preview. Honors OS transparency/high contrast; opaque fallback where needed. [UI details](docs/UI_DESIGN.md).
