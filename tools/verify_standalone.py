@@ -1,6 +1,7 @@
 """Verify an EXE-only distribution and its embedded runtime without attaching to a user app."""
 from pathlib import Path
 import argparse, hashlib, json, os, shutil, subprocess, tempfile, time
+from verify_app_icon import verify_app_icon
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -10,6 +11,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='CursorBridge 单文件 EXE ') as temporary:
         root=Path(temporary);launch=root/'Only EXE';launch.mkdir()
         exe=launch/'CursorBridge.exe';shutil.copyfile(build/'bin/StellarisCursor.exe',exe)
+        verify_app_icon(exe)
         target=root/'Never run target.exe';shutil.copyfile(build/'bin/StellarisCursorTest.exe',target)
         data=root/'Data';log=data/'logs/controller.log'
         # Select our non-running test host explicitly: never auto-attach to a

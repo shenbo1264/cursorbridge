@@ -10,7 +10,7 @@ import tempfile
 from make_themes import generate
 
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='0.9.3'
+VERSION='0.9.4'
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -19,12 +19,13 @@ def main():
     build=args.build_dir.resolve()
     out=ROOT/'dist';out.mkdir(exist_ok=True)
     subprocess.run(['python',str(ROOT/'tools/validate_workshop.py')],check=True)
-    documents=['README.md','README.zh-CN.md','LICENSE','SECURITY.md','docs/ARCHITECTURE.md','docs/ROADMAP.md','docs/VALIDATION.md','docs/YOLOMOUSE_COMPARISON.md','docs/UI_DESIGN.md','docs/RELEASE_NOTES_v0.9.3.md','docs/WORKSHOP_UPLOAD.md','docs/WORKSHOP_DESCRIPTION.zh.bbcode','docs/WORKSHOP_DESCRIPTION.en.bbcode']
+    documents=['README.md','README.zh-CN.md','LICENSE','SECURITY.md','docs/ARCHITECTURE.md','docs/ROADMAP.md','docs/VALIDATION.md','docs/YOLOMOUSE_COMPARISON.md','docs/UI_DESIGN.md','docs/BRANDING.md','docs/RELEASE_NOTES_v0.9.4.md','docs/WORKSHOP_UPLOAD.md','docs/WORKSHOP_DESCRIPTION.zh.bbcode','docs/WORKSHOP_DESCRIPTION.en.bbcode']
+    branding=['assets/branding/cursorbridge-a1.png','assets/branding/cursorbridge.ico','assets/branding/a1-prompt.txt']
     images=[p.relative_to(ROOT).as_posix() for p in sorted(p for p in (ROOT/'docs/images').iterdir() if p.suffix in {'.png','.jpg'})]
     launchers=['Open Settings.cmd','Start Companion.cmd','Launch Target.cmd','Stop Companion.cmd']
     toolkit=['tools/create_settings_patch.py']
     binaries=['StellarisCursor.exe','StellarisCursorHook.dll']
-    entries={name:(ROOT/name).read_bytes() for name in documents+images+launchers+toolkit}
+    entries={name:(ROOT/name).read_bytes() for name in documents+branding+images+launchers+toolkit}
     for name in binaries:
         entries['bin/'+name]=(build/'bin'/name).read_bytes()
     # Only independently regenerated original artwork can enter the archive.

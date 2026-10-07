@@ -1,4 +1,14 @@
-# Validation scope — v0.9.3
+# Validation scope — v0.9.4
+
+## v0.9.4 embedded mascot icon
+
+- Windows x64 Release build with warnings-as-errors passed. All six CTest groups passed, including 62 native-panel checks, 48 preference checks and 13 isolated connection checks.
+- Both large and small icons loaded from the compiled icon group at the system's requested sizes. The hidden settings window exposes these respective handles through `WM_GETICON`; its control/close/reopen behavior remains covered by the panel tests.
+- All nine compiled resource images (16, 20, 24, 32, 40, 48, 64, 128 and 256 px) matched the checked-in ICO bytes. Windows `ExtractIconExW` extracted both default large and small icons from an EXE copied alone into a Unicode/spaced folder. Startup, exact-path shutdown and all 109 embedded runtime files passed verification.
+- The selected 1254-square master remains byte-identical to A1. Cursor sizing, hook DLL and ABI are unchanged. Ordinary builds use the checked-in ICO and require no Pillow or generator. No live third-party game was launched for this icon revision.
+- The updated local single EXE opened the Chinese settings panel with its existing original-style and paused preferences intact. The actual minimize button minimized the window; opening settings restored it. The preference file remained byte-identical before and after this check.
+
+Compiled-resource and window-handle checks establish correct icon integration; they do not by themselves establish tray/taskbar appearance at every Windows DPI, theme or cache state.
 
 ## v0.9.3 window and pause behavior
 

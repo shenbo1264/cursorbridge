@@ -9,12 +9,21 @@ static int checks=0,failures=0;
 static void Expect(bool result,const char* label){++checks;if(!result){++failures;std::cerr<<"FAIL: "<<label<<"\n";}}
 static void Command(int id,int code=BN_CLICKED){SendMessageW(panelWindow,WM_COMMAND,MAKEWPARAM(id,code),(LPARAM)GetDlgItem(panelWindow,id));}
 static std::wstring ControlText(HWND child){wchar_t text[256]={};GetWindowTextW(child,text,256);return text;}
+static bool IconDimensions(HICON icon,bool useSmall){
+    ICONINFO info={};if(!icon||!GetIconInfo(icon,&info))return false;
+    BITMAP bitmap={};bool good=info.fIcon&&info.hbmColor&&GetObjectW(info.hbmColor,sizeof(bitmap),&bitmap)&&
+        bitmap.bmWidth==GetSystemMetrics(useSmall?SM_CXSMICON:SM_CXICON)&&bitmap.bmHeight==GetSystemMetrics(useSmall?SM_CYSMICON:SM_CYICON);
+    if(info.hbmColor)DeleteObject(info.hbmColor);if(info.hbmMask)DeleteObject(info.hbmMask);return good;
+}
 int wmain(){
     SetProcessDPIAware();INITCOMMONCONTROLSEX controls={sizeof(controls),ICC_BAR_CLASSES};InitCommonControlsEx(&controls);
     wchar_t temporary[MAX_PATH]={};GetTempPathW(MAX_PATH,temporary);
     auto fixture=std::filesystem::path(temporary)/(L"CursorBridge-panel-test-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64()));
     if(!std::filesystem::create_directory(fixture))return 2;settingsPath=(fixture/L"settings.ini").wstring();logPath=(fixture/L"test.log").wstring();
     binDir=Parent(ModulePath());desiredSize=24;desiredTheme=6;lockWindow=false;enabled=true;
+    applicationIcon=LoadApplicationIcon();applicationSmallIcon=LoadApplicationIcon(true);
+    Expect(IconDimensions(applicationIcon,false),"embedded taskbar icon loads at Windows large-icon size");
+    Expect(IconDimensions(applicationSmallIcon,true),"embedded tray icon loads at Windows small-icon size");
     uiLanguage.language=UiLanguage::Chinese;OpenSettings(false);
     attached=(HANDLE)1;hotkeyError=true;
     Expect(PanelStatus().find(L"已连接")!=std::wstring::npos&&PanelStatus().find(L"24 px")!=std::wstring::npos,"shortcut warning retains connection and applied size");
@@ -24,6 +33,8 @@ int wmain(){
     failedPid=0;hotkeyError=false;enabled=true;uiLanguage.language=UiLanguage::Chinese;
     Expect(panelWindow!=NULL,"panel created");if(!panelWindow)return 1;
     Expect(!IsWindowVisible(panelWindow),"test panel stays hidden");
+    Expect((HICON)SendMessageW(panelWindow,WM_GETICON,ICON_BIG,0)==applicationIcon,"settings use embedded large icon");
+    Expect((HICON)SendMessageW(panelWindow,WM_GETICON,ICON_SMALL,0)==applicationSmallIcon,"settings use embedded small icon");
     Expect((GetWindowLongPtrW(panelWindow,GWL_STYLE)&WS_MINIMIZEBOX)!=0,"native minimize is available");
     Expect((GetWindowLongPtrW(panelWindow,GWL_EXSTYLE)&WS_EX_TOPMOST)==0,"settings do not force themselves above other apps");
     PanelTick();Expect(!IsWindowVisible(panelWindow),"timer never reopens a hidden settings window");
@@ -87,6 +98,7 @@ int wmain(){
     Command(133);Expect(panelWindow==NULL,"close action releases panel");
     OpenSettings(false);Expect(panelWindow!=NULL&&ControlText(sizeEdit)==L"32","reopen keeps selected size");CloseSettings();
     Expect(panelFont==NULL&&panelNumberFont==NULL&&panelBackground==NULL,"close releases renderer resources");
+    DestroyIcon(applicationIcon);DestroyIcon(applicationSmallIcon);
     auto resolved=std::filesystem::weakly_canonical(fixture);
     if(resolved.parent_path()!=std::filesystem::weakly_canonical(std::filesystem::path(temporary))||resolved.filename()!=fixture.filename())return 2;
     std::filesystem::remove_all(resolved);

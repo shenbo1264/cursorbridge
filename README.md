@@ -1,12 +1,14 @@
 # CursorBridge
 
-[简体中文](README.zh-CN.md) · [Download EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.3/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.3)
+<img src="assets/branding/cursorbridge-a1.png" width="112" height="112" alt="CursorBridge A1 baby mouse mascot">
+
+[简体中文](README.zh-CN.md) · [Download EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.4/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.4)
 
 **An independent MIT-licensed Windows x64 cursor customization tool.** Select a target application, resize its cursor and switch original themes without changing Windows desktop preferences. Started with Stellaris, v0.9 adds an **experimental general Win32 adapter** alongside the dedicated Stellaris adapter. The goal is a tool in the same category as YoloMouse; full feature parity is not claimed.
 
 ## Download and run
 
-1. Download **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.3/CursorBridge.exe)** and double-click. No installer, manual extraction, Python or separate DLL download is needed.
+1. Download **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.4/CursorBridge.exe)** and double-click. No installer, manual extraction, Python or separate DLL download is needed.
 2. Click **Select target application…** in settings or the tray. Select the actual **64-bit application executable**. Click the new **Launch game / Launch & connect** button beside the selector, or start the target normally. If it is already running, the button connects to that process; after a failure, click **Connect game / Connect app** to retry.
 3. Set size/style/color, then return to the target. Changes apply while it is foreground and the pointer is over its client area.
 4. Minimize to the taskbar, or use Hide to tray / close the window to keep running. Left-click the tray icon to reopen settings; right-click for its menu. Quit app exits completely and restores the original cursor. The hook remains resident until the target exits; close the target before updating the tool.
@@ -21,7 +23,9 @@ Existing users retain Steam/running-Stellaris discovery when no target is select
 
 A hotkey conflict only affects those shortcuts; the panel still works, and Add Shift can avoid a collision. Connection, pause and size remain visible separately from shortcut/save notices.
 
-## v0.9.3 preview
+## v0.9.4 preview
+
+- A1 baby-mouse app icon embedded in the EXE, settings/taskbar and tray, with nine native Windows sizes. [Artwork and provenance](docs/BRANDING.md).
 
 - Real taskbar minimization, Hide to tray and explicit Quit app. Settings are no longer always on top and never automatically hide or reopen. Left-click the tray icon to open settings; right-click for its menu.
 - Explicit enable switch; editing size, style or presets preserves pause, including across restarts.
@@ -89,6 +93,6 @@ $generic.ExitCode
 python tools/verify_standalone.py --build-dir build
 ```
 
-Tests inject only the exact-path dedicated test host, never the layout marker or a user application. Reports under `build/logs` cover 40,700 Stellaris and 34,969 general-adapter checks. Five CTest groups cover bridge, language, paths, preferences and hidden native controls. Counts do not replace long-session/real-game testing. [Validation scope](docs/VALIDATION.md). Packaging regenerates original assets and checks a public-file allowlist.
+Tests inject only the exact-path dedicated test host, never the layout marker or a user application. Reports under `build/logs` cover 40,700 Stellaris and 34,969 general-adapter checks. Six CTest groups cover bridge, language, paths, preferences, hidden native controls and isolated process connection. Single-file verification checks the compiled app icon as well as its embedded runtime. Counts do not replace long-session/real-game testing. [Validation scope](docs/VALIDATION.md). Packaging regenerates original cursor themes and checks a public-file allowlist.
 
 [Contribute](CONTRIBUTING.md) · [Security](SECURITY.md). Remove personal paths from shared logs. Independent of Paradox Interactive, Steam and YoloMouse. Original code/scripts/fixtures/art use [MIT](LICENSE); game assets and generated third-party GUI do not.

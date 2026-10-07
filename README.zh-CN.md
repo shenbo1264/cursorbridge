@@ -1,12 +1,14 @@
 # CursorBridge
 
-[English](README.md) · [直接下载 EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.3/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.3)
+<img src="assets/branding/cursorbridge-a1.png" width="112" height="112" alt="CursorBridge A1 小鼠团子">
+
+[English](README.md) · [直接下载 EXE](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.4/CursorBridge.exe) · [Release](https://github.com/shenbo1264/cursorbridge/releases/tag/v0.9.4)
 
 **MIT 开源的 Windows x64 光标调整工具。** 选择目标程序，调整大小、样式和颜色，保存预设并使用快捷键。从《群星》起步，v0.9 增加实验性通用 Win32 后端，保留《群星》专属适配。方向是 YoloMouse 同类的开源工具，目前尚未实现完整功能对等。
 
 ## 下载与使用
 
-1. 下载 **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.3/CursorBridge.exe)**，双击打开设置。无需安装器、手动解压、Python 或单独下载 DLL。
+1. 下载 **[CursorBridge.exe](https://github.com/shenbo1264/cursorbridge/releases/download/v0.9.4/CursorBridge.exe)**，双击打开设置。无需安装器、手动解压、Python 或单独下载 DLL。
 2. 点击设置页上方或托盘中的 **选择目标程序…**，选中实际运行的 **64 位程序 EXE**。点击右侧新增的 **启动并连接游戏／启动并连接**。目标已运行时连接已有进程，未运行时启动并自动连接；失败时点击 **连接游戏／连接程序** 重试。也可以照常启动目标。
 3. 调节大小、样式与颜色，回到目标使用。目标在前台、鼠标位于客户区时才应用调整。
 4. 右上角“最小化”收至任务栏；“收起到托盘”或关闭窗口会保留后台运行，左键点击托盘图标重新打开设置。“退出程序”完全退出并恢复原光标。更新前关闭目标程序：已加载的钩子驻留到目标退出。
@@ -21,7 +23,9 @@ EXE 内置钩子及 108 个原创光标文件，首次运行在 `%LOCALAPPDATA%/
 
 快捷键冲突仅影响对应快捷键，可以继续使用面板；也可勾选“快捷键加 Shift”。连接、暂停和尺寸信息与快捷键／保存提示分开显示，避免提示遮住状态。
 
-## v0.9.3 预览版
+## v0.9.4 预览版
+
+- A1“小鼠团子”统一用于程序文件、设置窗口／任务栏和托盘，EXE 内置九种 Windows 图标尺寸。[图标素材与来源说明](docs/BRANDING.md)。
 
 - 正常最小化到任务栏、收起到托盘与完整退出；窗口不强制置顶，不自动隐藏或弹回。托盘左键打开设置，右键显示菜单。
 - 独立启用开关；暂停期间调整尺寸、样式和预设保持暂停，重启后保留状态。

@@ -4,6 +4,7 @@
 #include "game_profile.h"
 #include "install_paths.h"
 #include "preferences.h"
+#include "app_icon.h"
 #include <commctrl.h>
 #include <commdlg.h>
 #include <tlhelp32.h>
@@ -36,12 +37,15 @@ static const wchar_t* Text(UiText key){return UiString(uiLanguage.language,key);
 static BridgeTail bridge;
 static NOTIFYICONDATAW tray={};
 static HICON applicationIcon=NULL;
+static HICON applicationSmallIcon=NULL;
 static const UINT taskbarCreatedMessage=RegisterWindowMessageW(L"TaskbarCreated");
-static HICON LoadApplicationIcon(){
-    HCURSOR cursor=(HCURSOR)LoadImageW(NULL,ThemeResourcePath(binDir,2,0).c_str(),IMAGE_CURSOR,32,32,LR_LOADFROMFILE);
-    if(!cursor)return NULL;ICONINFO info={};HICON icon=NULL;
-    if(GetIconInfo(cursor,&info)){info.fIcon=TRUE;icon=CreateIconIndirect(&info);if(info.hbmMask)DeleteObject(info.hbmMask);if(info.hbmColor)DeleteObject(info.hbmColor);}
-    DestroyCursor(cursor);return icon;
+static HICON LoadApplicationIcon(bool useSmall=false){
+    return (HICON)LoadImageW(GetModuleHandleW(NULL),MAKEINTRESOURCEW(IDI_CURSORBRIDGE),IMAGE_ICON,
+        GetSystemMetrics(useSmall?SM_CXSMICON:SM_CXICON),GetSystemMetrics(useSmall?SM_CYSMICON:SM_CYICON),0);
+}
+static void ApplyApplicationIcons(HWND window){
+    SendMessageW(window,WM_SETICON,ICON_BIG,(LPARAM)applicationIcon);
+    SendMessageW(window,WM_SETICON,ICON_SMALL,(LPARAM)applicationSmallIcon);
 }
 static int IndexSize(int i){static const int sizes[]={24,32,40,48};return sizes[i];}
 static void SaveSize(){
@@ -325,12 +329,13 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,wchar_t*,int) {
     CursorPreset preferences=ReadPreset(settingsPath,L"Cursor");desiredSize=preferences.size;desiredTheme=preferences.theme;lockWindow=preferences.lock;enabled=ReadAdjustmentEnabled(settingsPath);
     hotkeyModifiers=ReadHotkeyModifiers(settingsPath);
     INITCOMMONCONTROLSEX controls={sizeof(controls),ICC_BAR_CLASSES};InitCommonControlsEx(&controls);
-    applicationIcon=LoadApplicationIcon();
+    applicationIcon=LoadApplicationIcon();applicationSmallIcon=LoadApplicationIcon(true);
     WNDCLASSW wc={};wc.lpfnWndProc=Procedure;wc.hInstance=instance;wc.hIcon=applicationIcon;wc.lpszClassName=L"StellarisCursorController";RegisterClassW(&wc);
     windowHandle=CreateWindowExW(0,wc.lpszClassName,Text(UiText::WindowTitle),0,0,0,0,0,NULL,NULL,instance,NULL);
-    tray.cbSize=sizeof(tray);tray.hWnd=windowHandle;tray.uID=1;tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP;tray.uCallbackMessage=WM_APP+1;tray.hIcon=applicationIcon?applicationIcon:LoadIconW(NULL,IDI_APPLICATION);wcsncpy_s(tray.szTip,Text(UiText::TrayWaiting),_TRUNCATE);Shell_NotifyIconW(NIM_ADD,&tray);
+    ApplyApplicationIcons(windowHandle);
+    tray.cbSize=sizeof(tray);tray.hWnd=windowHandle;tray.uID=1;tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP;tray.uCallbackMessage=WM_APP+1;tray.hIcon=applicationSmallIcon?applicationSmallIcon:(applicationIcon?applicationIcon:LoadIconW(NULL,IDI_APPLICATION));wcsncpy_s(tray.szTip,Text(UiText::TrayWaiting),_TRUNCATE);Shell_NotifyIconW(NIM_ADD,&tray);
     SetTimer(windowHandle,1,1000,NULL);SetTimer(windowHandle,2,200,NULL);Tick();Log(genericAdapter?L"CursorBridge started with the opt-in Windows x64 native-cursor adapter.":L"CursorBridge started with the Stellaris adapter.");
     if(launch)LaunchGame();
     if(showSettings)OpenSettings();
-    MSG msg;while(GetMessageW(&msg,NULL,0,0)>0){if(panelWindow&&IsDialogMessageW(panelWindow,&msg))continue;TranslateMessage(&msg);DispatchMessageW(&msg);}if(applicationIcon)DestroyIcon(applicationIcon);CloseHandle(single);return 0;
+    MSG msg;while(GetMessageW(&msg,NULL,0,0)>0){if(panelWindow&&IsDialogMessageW(panelWindow,&msg))continue;TranslateMessage(&msg);DispatchMessageW(&msg);}if(applicationIcon)DestroyIcon(applicationIcon);if(applicationSmallIcon)DestroyIcon(applicationSmallIcon);CloseHandle(single);return 0;
 }

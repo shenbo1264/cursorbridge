@@ -338,6 +338,7 @@ static void OpenSettings(bool show=true){
         bounds.left+(bounds.right-bounds.left-P(PanelWidth))/2,bounds.top+(bounds.bottom-bounds.top-P(PanelHeight))/2,P(PanelWidth),P(PanelHeight),NULL,NULL,cls.hInstance,NULL);
     if(!panelWindow)return;
     SetWindowPos(panelWindow,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
+    ApplyApplicationIcons(panelWindow);
     RefreshPanelMaterial();
     panelFont=CreateFontW(-P(13),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Microsoft YaHei UI");
     panelNumberFont=CreateFontW(-P(30),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH,L"Segoe UI");

@@ -1,0 +1,2 @@
+#include "@CMAKE_SOURCE_DIR@/src/app_icon.h"
+IDI_CURSORBRIDGE ICON "@CMAKE_SOURCE_DIR@/assets/branding/cursorbridge.ico"
